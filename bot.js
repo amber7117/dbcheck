@@ -295,6 +295,6 @@ app.get("/", (req, res) => res.send("🤖 Bot is running on Cloud Run!"));
 
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
-  console.log(`📡 Set Telegram webhook to: https://api.telegram.org/bot${BOT_TOKEN}/setWebhook?url=https://dbcheck-bot-549712884410.asia-southeast1.run.app${WEBHOOK_PATH}`);
+  console.log(`📡 Set Telegram webhook to: https://api.telegram.org/bot${BOT_TOKEN}/setWebhook?url=https://dbcheck-pqur.onrender.com/${WEBHOOK_PATH}`);
 });
 
