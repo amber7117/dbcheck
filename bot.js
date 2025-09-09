@@ -63,6 +63,9 @@ const STAR_PACKAGES = [
 // ==== BOT ====
 const bot = new Telegraf(BOT_TOKEN);
 
+// ==== Query Queue ====
+let queryQueue = Promise.resolve();
+
 // ==== Mongo ====
 mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true });
 
@@ -197,62 +200,67 @@ bot.command('balance', async (ctx) => {
 });
 
 // ====== /query （普通查询，成功才扣 1 点：原子更新 & 分块发送）======
-bot.command('query', async (ctx) => {
-  const userId = ctx.from.id;
-  const user = await User.findOne({ userId });
-  if (!user || user.points <= 0) {
-    await new QueryLog({ userId, query: ctx.message.text, results: 0, success: false }).save();
-    return ctx.reply(tr(ctx, 'errors.noPoints', '❌ You don’t have enough points. Please recharge.'));
-  }
-
-  const args = ctx.message.text.split(' ').slice(1);
-  if (!args.length) return ctx.reply(tr(ctx, 'query.usage', 'Please provide a search query, e.g. `/query John Smith`'), { parse_mode: 'Markdown' });
-
-  const queryText = args.join(' ');
-  const waitMsg = await ctx.reply('🔍 ' + tr(ctx, 'ui.searching', 'Searching, please wait...'));
-
-  try {
-    const resultOutput = await search(queryText);
-    try { await ctx.deleteMessage(waitMsg.message_id); } catch {}
-
-    // Handle cases where there are no results or an error occurred during search
-    if (resultOutput === 'No results found.') {
-      await new QueryLog({ userId, query: queryText, results: 0, success: false }).save();
-      return ctx.reply('⚠️ ' + tr(ctx, 'query.noResult', 'No matching results found. No points deducted.'));
-    }
-    if (resultOutput.startsWith('An error occurred')) {
-      await new QueryLog({ userId, query: queryText, results: 0, success: false }).save();
-      return ctx.reply('❌ ' + tr(ctx, 'errors.searchError', 'Error occurred while searching. Please try again later.'));
-    }
-
-    // If we have results, deduct points
-    const dec = await User.findOneAndUpdate(
-      { userId, points: { $gte: 1 } },
-      { $inc: { points: -1 } },
-      { new: true }
-    );
-    if (!dec) {
-      await new QueryLog({ userId, query: queryText, results: 0, success: false }).save();
+bot.command('query', (ctx) => {
+  queryQueue = queryQueue.then(async () => {
+    const userId = ctx.from.id;
+    const user = await User.findOne({ userId });
+    if (!user || user.points <= 0) {
+      await new QueryLog({ userId, query: ctx.message.text, results: 0, success: false }).save();
       return ctx.reply(tr(ctx, 'errors.noPoints', '❌ You don’t have enough points. Please recharge.'));
     }
-    // Log success, result count is unknown here but the query was successful
-    await new QueryLog({ userId, query: queryText, results: 1, success: true }).save();
 
-    // Handle the output: either send a text file or a message
-    if (resultOutput.includes('.txt')) {
-      const filePath = resultOutput.split(': ')[1];
-      await ctx.reply(resultOutput); // Send the message "The result is too long..."
-      await ctx.replyWithDocument({ source: filePath }); // Send the file itself
-    } else {
-      // The result is short enough to be sent as a message
-      await ctx.reply(`<pre>${htmlEsc(resultOutput)}</pre>`, { parse_mode: 'HTML' });
+    const args = ctx.message.text.split(' ').slice(1);
+    if (!args.length) return ctx.reply(tr(ctx, 'query.usage', 'Please provide a search query, e.g. `/query John Smith`'), { parse_mode: 'Markdown' });
+
+    const queryText = args.join(' ');
+    const waitMsg = await ctx.reply('🔍 ' + tr(ctx, 'ui.searching', 'Searching, please wait...'));
+
+    try {
+      const resultOutput = await search(queryText);
+      try { await ctx.deleteMessage(waitMsg.message_id); } catch {}
+
+      // Handle cases where there are no results or an error occurred during search
+      if (resultOutput === 'No results found.') {
+        await new QueryLog({ userId, query: queryText, results: 0, success: false }).save();
+        return ctx.reply('⚠️ ' + tr(ctx, 'query.noResult', 'No matching results found. No points deducted.'));
+      }
+      if (resultOutput.startsWith('An error occurred')) {
+        await new QueryLog({ userId, query: queryText, results: 0, success: false }).save();
+        return ctx.reply('❌ ' + tr(ctx, 'errors.searchError', 'Error occurred while searching. Please try again later.'));
+      }
+
+      // If we have results, deduct points
+      const dec = await User.findOneAndUpdate(
+        { userId, points: { $gte: 1 } },
+        { $inc: { points: -1 } },
+        { new: true }
+      );
+      if (!dec) {
+        await new QueryLog({ userId, query: queryText, results: 0, success: false }).save();
+        return ctx.reply(tr(ctx, 'errors.noPoints', '❌ You don’t have enough points. Please recharge.'));
+      }
+      // Log success, result count is unknown here but the query was successful
+      await new QueryLog({ userId, query: queryText, results: 1, success: true }).save();
+
+      // Handle the output: either send a text file or a message
+      if (resultOutput.includes('.txt')) {
+        const filePath = resultOutput.split(': ')[1];
+        await ctx.reply(resultOutput); // Send the message "The result is too long..."
+        await ctx.replyWithDocument({ source: filePath }); // Send the file itself
+      } else {
+        // The result is short enough to be sent as a message
+        await ctx.reply(`<pre>${htmlEsc(resultOutput)}</pre>`, { parse_mode: 'HTML' });
+      }
+
+    } catch (e) {
+      console.error(e);
+      await new QueryLog({ userId, query: queryText, results: 0, success: false }).save();
+      await ctx.reply('❌ ' + tr(ctx, 'errors.searchError', 'Error occurred while searching. Please try again later.'));
     }
-
-  } catch (e) {
-    console.error(e);
-    await new QueryLog({ userId, query: queryText, results: 0, success: false }).save();
-    await ctx.reply('❌ ' + tr(ctx, 'errors.searchError', 'Error occurred while searching. Please try again later.'));
-  }
+  }).catch(err => {
+    console.error("Error in query queue:", err);
+    ctx.reply('❌ An unexpected error occurred in the processing queue.');
+  });
 });
 
 // ====== /lookup （HLR 查询，成功才扣 1 点）======
