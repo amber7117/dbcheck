@@ -94,7 +94,7 @@ bot.start(async (ctx) => {
   if (!user) {
     const inviteMatch = ctx.startPayload?.match(/invite_(\d+)/);
     const invitedBy = inviteMatch ? parseInt(inviteMatch[1]) : null;
-    user = new User({ userId, invitedBy, points: 0 });
+    user = new User({ userId, invitedBy, points: 5 });
     await user.save();
     if (invitedBy) await User.findOneAndUpdate({ userId: invitedBy }, { $inc: { points: 1 } });
   }

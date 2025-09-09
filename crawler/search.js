@@ -210,8 +210,8 @@ async function doSearch(page, queryText) {
  * Format search results into readable output
  */
 function formatResults(results) {
-  let output = 'IC NO. | NAME | OLD IC NO. | ADDRESS | PHONE\n';
-  output += '--------------------------------------------------\n';
+  let output = 'IC NO.      | NAME.          | OLD IC NO. |            ADDRESS           | PHONE\n';
+  output += '-------------------------------------------------------------------------------------\n';
   
   results.forEach(item => {
     output += `${item.idCard || ''} | ${item.name} | | ${item.address} | ${item.phone}\n`;
