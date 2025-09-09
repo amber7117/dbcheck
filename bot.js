@@ -104,7 +104,7 @@ bot.start(async (ctx) => {
     tr(ctx, 'start.quickQuery.tip', 'Send name / phone / ID directly') + `\n\n` +
     `${tr(ctx, 'start.comboQuery', '📑 Combined Query:')}\n` +
     tr(ctx, 'start.comboQuery.examples',
-      '/query Ahmad Faizal\n/query 0164441111\n/query 90010111XXXX') +
+      '/query Ahmad Faizal\n/query 0123456789\n/query 90010111XXXX') +
     `\n\n⚠️ ` + tr(ctx, 'start.fieldsLimit',
       'This bot shows 4 fields: Name / ID Card / Phone / Address. Use Premium for more.');
 
@@ -174,7 +174,7 @@ bot.action('cancel_premium', async (ctx) => {
     `${tr(ctx, 'start.quickQuery', '🔎 Quick Query:')} ` + tr(ctx, 'start.quickQuery.tip', 'Send name / phone / ID directly') + `\n\n` +
     `${tr(ctx, 'start.comboQuery', '📑 Combined Query:')}\n` +
     tr(ctx, 'start.comboQuery.examples',
-      '/query Wang Weilin\n/query 110101198906046034 xxLin\n/query Zhang San 1373xxxxx55') +
+      '/query Ahmad faizal \n/query <idcard number> \n/query 0123456789') +
     `\n\n⚠️ ` + tr(ctx, 'start.fieldsLimit',
       'This bot shows 4 fields: Name / ID Card / Phone / Address. Use Premium for more.');
   await ctx.reply(text, {
