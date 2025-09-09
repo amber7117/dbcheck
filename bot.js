@@ -2,9 +2,12 @@ require('dotenv').config();
 const { Telegraf, Markup } = require('telegraf');
 const mongoose = require('mongoose');
 const express = require('express');
+const fs = require('fs');
+const path = require('path');
 const User = require('./models/user');
 const QueryLog = require('./models/queryLog');
 const search = require('./crawler/search');
+const { lookup } = require('./hlrlookup');
 const { assignDepositAddress, checkDeposits } = require('./services/topup');
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -27,6 +30,20 @@ mongoose.connect(MONGODB_URI, {
   useUnifiedTopology: true
 });
 
+// i18n setup
+const locales = {};
+const localesDir = path.join(__dirname, 'locales');
+fs.readdirSync(localesDir).forEach(file => {
+  if (file.endsWith('.json')) {
+    const lang = file.split('.')[0];
+    locales[lang] = require(path.join(localesDir, file));
+  }
+});
+
+function getLocale(languageCode) {
+  return locales[languageCode] || locales['en'];
+}
+
 // ========== START command ==========
 bot.start(async (ctx) => {
   const userId = ctx.from.id;
@@ -47,25 +64,9 @@ bot.start(async (ctx) => {
     }
   }
 
+  const lang = getLocale(ctx.from.language_code);
   await ctx.replyWithMarkdown(
-`👋 
-
-🆔 Your ID: \`${userId}\`  
-💰 Current Balance: *${user.points} points*
-
-🔎 Quick Query:  
-Send *name / phone number / ID card number*  
-
-📑 Combined Query:  
-Use */query* command with multiple parameters  
-/query Ahmad Faizal  
-/query 0164441111
-/query 90010111XXXX  
-
-⚠️ This bot only displays 4 fields:  
-*Name, ID Card, Phone, Address*
-*For other go to premium search*  
-`,
+    lang.welcome.replace('{userId}', userId).replace('{points}', user.points),
     Markup.inlineKeyboard([
       [Markup.button.callback('💎 Premium Search', 'premium')],
       [Markup.button.callback('💳 Top Up', 'recharge'), Markup.button.callback('❓ Help', 'help')],
@@ -78,22 +79,12 @@ Use */query* command with multiple parameters
 bot.action('premium', async (ctx) => {
   const userId = ctx.from.id;
   const user = await User.findOne({ userId });
-  if (!user) return ctx.reply('❌ You are not registered yet. Use /start first.');
+  const lang = getLocale(ctx.from.language_code);
+  if (!user) return ctx.reply(lang.not_registered);
 
   await ctx.answerCbQuery();
   await ctx.replyWithMarkdown(
-`💎 *Premium Search Service*
-
-Available:  
-- 🏠 Address Search  
-- 📍 Phone Geo-location  
-- 🚗 License Plate Search  
-- … and more
-
-⚠️ Each premium search costs *50 points*.  
-💰 Your balance: *${user.points} points*
-
-Do you want to proceed?`,
+    lang.premium_search_prompt.replace('{points}', user.points),
     Markup.inlineKeyboard([
       [Markup.button.callback('✅ Confirm (50 points)', 'confirm_premium')],
       [Markup.button.callback('❌ Cancel', 'cancel_premium')]
@@ -112,11 +103,12 @@ Do you want to proceed?`,
 bot.action('confirm_premium', async (ctx) => {
   const userId = ctx.from.id;
   const user = await User.findOne({ userId });
-  if (!user) return ctx.reply('❌ You are not registered yet. Use /start first.');
+  const lang = getLocale(ctx.from.language_code);
+  if (!user) return ctx.reply(lang.not_registered);
 
   if (user.points < 50) {
     await ctx.answerCbQuery();
-    return ctx.reply('❌ Insufficient balance. Please contact @dbcheck to recharge.');
+    return ctx.reply(lang.insufficient_balance);
   }
 
   await User.updateOne({ userId }, { $inc: { points: -50 } });
@@ -129,7 +121,7 @@ bot.action('confirm_premium', async (ctx) => {
   }).save();
 
   await ctx.answerCbQuery();
-  await ctx.reply('✅ 50 points deducted. Please provide your premium search details to @dbcheck.');
+  await ctx.reply(lang.premium_search_confirmed);
 });
 
 bot.action('cancel_premium', async (ctx) => {
@@ -141,25 +133,10 @@ bot.action('cancel_premium', async (ctx) => {
     user = new User({ userId, points: 0 });
     await user.save();
   }
+  const lang = getLocale(ctx.from.language_code);
 
   await ctx.replyWithMarkdown(
-`👋 Welcome back
-
-🆔 Your ID: \`${userId}\`  
-💰 Current Balance: *${user.points} points*
-
-🔎 Quick Query:  
-Send *name / phone number / ID card number*  
-
-📑 Combined Query:  
-Use */query* command with multiple parameters  
-/query Wang Weilin  
-/query 110101198906046034 xxLin  
-/query Zhang San 1373xxxxx55  
-
-⚠️ This bot only displays 4 fields:  
-*Name, ID Card, Phone, Address*  
-`,
+    lang.premium_search_cancelled.replace('{userId}', userId).replace('{points}', user.points),
     Markup.inlineKeyboard([
       [Markup.button.callback('💎 Premium Search', 'premium')],
       [Markup.button.callback('💳 Top Up', 'recharge'), Markup.button.callback('❓ Help', 'help')],
@@ -171,24 +148,44 @@ Use */query* command with multiple parameters
 // ========== BALANCE ==========
 bot.command('balance', async (ctx) => {
   const user = await User.findOne({ userId: ctx.from.id });
-  if (!user) return ctx.reply('❌ You are not registered yet. Use /start first.');
-  return ctx.reply(`💰 Your current balance: *${user.points} points*`, { parse_mode: 'Markdown' });
+  const lang = getLocale(ctx.from.language_code);
+  if (!user) return ctx.reply(lang.not_registered);
+  return ctx.reply(lang.balance_message.replace('{points}', user.points), { parse_mode: 'Markdown' });
+});
+
+// ========== LOOKUP COMMAND ==========
+bot.command('lookup', async (ctx) => {
+    const lang = getLocale(ctx.from.language_code);
+    const phoneNumber = ctx.message.text.split(' ')[1];
+
+    if (!phoneNumber) {
+        return ctx.reply(lang.lookup_prompt);
+    }
+
+    const result = await lookup(phoneNumber);
+
+    if (result) {
+        ctx.reply(`${lang.lookup_result}\n\n<pre>${JSON.stringify(result, null, 2)}</pre>`, { parse_mode: 'HTML' });
+    } else {
+        ctx.reply(lang.hlr_error);
+    }
 });
 
 // ========== QUERY ==========
 bot.command('query', async (ctx) => {
   const userId = ctx.from.id;
   const user = await User.findOne({ userId });
+  const lang = getLocale(ctx.from.language_code);
   if (!user || user.points <= 0) {
     await new QueryLog({ userId, query: ctx.message.text, results: 0, success: false }).save();
-    return ctx.reply('❌ You don’t have enough points. Please recharge.');
+    return ctx.reply(lang.no_points);
   }
 
   const args = ctx.message.text.split(' ').slice(1);
-  if (!args.length) return ctx.reply('Please provide a search query, e.g. `/query John Smith`');
+  if (!args.length) return ctx.reply(lang.query_prompt);
 
   const queryText = args.join(' ');
-  const waitMsg = await ctx.reply('🔍 Searching, please wait...');
+  const waitMsg = await ctx.reply(lang.searching);
 
   try {
     const results = await search(queryText);
@@ -196,7 +193,7 @@ bot.command('query', async (ctx) => {
 
     if (!results.length) {
       await new QueryLog({ userId, query: queryText, results: 0, success: false }).save();
-      return ctx.reply('⚠️ No matching results found. No points deducted.');
+      return ctx.reply(lang.no_results);
     }
 
     await User.updateOne({ userId }, { $inc: { points: -1 } });
@@ -209,12 +206,12 @@ Phone: ${r.phone}
 Address: ${r.address}
 -------------------`).join('\n');
 
-    await ctx.reply(`✅ Found *${results.length}* results:\n\n${formatted}`, { parse_mode: 'Markdown' });
+    await ctx.reply(lang.results_found.replace('{count}', results.length).replace('{results}', formatted), { parse_mode: 'Markdown' });
 
   } catch (e) {
     console.error(e);
     await new QueryLog({ userId, query: queryText, results: 0, success: false }).save();
-    await ctx.reply('❌ Error occurred while searching. Please try again later.');
+    await ctx.reply(lang.search_error);
   }
 });
 
@@ -227,29 +224,32 @@ bot.on('text', async (ctx) => {
 
 // ========== OTHER CALLBACKS ==========
 bot.action('recharge', async (ctx) => {
-  await ctx.answerCbQuery();
-  const userId = ctx.from.id;
-  let user = await User.findOne({ userId });
+    await ctx.answerCbQuery();
+    const lang = getLocale(ctx.from.language_code);
+    await ctx.reply(lang.payment_prompt, {
+        reply_markup: {
+            inline_keyboard: [
+                [
+                    { text: '100 Stars', callback_data: 'stars_100' },
+                    { text: '500 Stars', callback_data: 'stars_500' },
+                    { text: '1000 Stars', callback_data: 'stars_1000' },
+                ],
+            ],
+        },
+    });
+});
 
-  if (!user) {
-    user = new User({ userId, points: 0 });
-    await user.save();
-  }
+bot.action(/stars_(\d+)/, async (ctx) => {
+    const amount = parseInt(ctx.match[1]);
+    const lang = getLocale(ctx.from.language_code);
 
-  const addr = await assignDepositAddress(user);
+    // Here you would integrate with Telegram's payment API
+    // For now, we'll just simulate a successful payment
+    const userId = ctx.from.id;
+    await User.findOneAndUpdate({ userId }, { $inc: { points: amount } });
 
-  await ctx.replyWithMarkdown(
-`💳 *USDT-TRC20 Recharge*
-
-Send at least *100 USDT* to:
-
-\`${addr}\`
-
-1 USDT = 1 point  
-⚠️ Minimum deposit = 100 USDT
-
-Your balance will update automatically after confirmation.`
-  );
+    await ctx.answerCbQuery();
+    await ctx.reply(lang.payment_successful);
 });
 
 // 定时任务检测充值
@@ -257,28 +257,22 @@ setInterval(() => checkDeposits(bot), 30000);
 
 bot.action('help', async (ctx) => {
   const user = await User.findOne({ userId: ctx.from.id });
+  const lang = getLocale(ctx.from.language_code);
   await ctx.answerCbQuery();
-  await ctx.replyWithMarkdown(
-`💰 Balance: ${user?.points || 0}
-
-📖 How to Use:
-1️⃣ Quick Query: Send a name, ID, or phone directly  
-2️⃣ Combined Query: Use /query with multiple params  
-3️⃣ Each successful query deducts *1 point*  
-4️⃣ No deduction if no results  
-5️⃣ Invite friends to earn free points  
-6️⃣ Premium searches cost *50 points* (contact @dbcheck)`);
+  await ctx.replyWithMarkdown(lang.help_message.replace('{points}', user?.points || 0));
 });
 
 bot.action('invite', async (ctx) => {
   await ctx.answerCbQuery();
   const inviteLink = `https://t.me/${ctx.botInfo.username}?start=invite_${ctx.from.id}`;
-  await ctx.reply(`👥 Invite friends to use this bot. You’ll earn *1 point* per signup.\n\nYour referral link:\n${inviteLink}`);
+  const lang = getLocale(ctx.from.language_code);
+  await ctx.reply(lang.invite_message.replace('{inviteLink}', inviteLink));
 });
 
 bot.action('support', async (ctx) => {
   await ctx.answerCbQuery();
-  await ctx.reply('☎️ Contact support:@ dbchect');
+  const lang = getLocale(ctx.from.language_code);
+  await ctx.reply(lang.support_message);
 });
 
 // ========== ERROR HANDLING ==========
@@ -289,6 +283,7 @@ bot.catch((err, ctx) => {
 // ========== EXPRESS SERVER FOR CLOUD RUN ==========
 const app = express();
 const WEBHOOK_PATH = `/webhook/${BOT_TOKEN}`;
+
 app.use(bot.webhookCallback(WEBHOOK_PATH));
 
 app.get("/", (req, res) => res.send("🤖 Bot is running on Cloud Run!"));
@@ -297,4 +292,3 @@ app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
   console.log(`📡 Set Telegram webhook to: https://api.telegram.org/bot${BOT_TOKEN}/setWebhook?url=https://dbcheck-pqur.onrender.com/${WEBHOOK_PATH}`);
 });
-
