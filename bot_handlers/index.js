@@ -32,7 +32,7 @@ function register(bot, locales) {
     await ctx.replyWithMarkdown(
       lang.welcome.replace('{userId}', userId).replace('{points}', user.points),
       Markup.inlineKeyboard([
-        [Markup.button.callback('💎 Premium Search', 'premium')],
+        [Markup.button.callback('💎 Advance Search', 'premium')],
         [Markup.button.callback('💳 Top Up', 'recharge'), Markup.button.callback('❓ Help', 'help')],
         [Markup.button.callback('👥 Invite', 'invite'), Markup.button.callback('☎️ Support', 'support')]
       ])
@@ -93,7 +93,7 @@ function register(bot, locales) {
     await ctx.replyWithMarkdown(
       lang.premium_search_cancelled.replace('{userId}', userId).replace('{points}', user.points),
       Markup.inlineKeyboard([
-        [Markup.button.callback('💎 Premium Search', 'premium')],
+        [Markup.button.callback('💎 Advance Search', 'premium')],
         [Markup.button.callback('💳 Top Up', 'recharge'), Markup.button.callback('❓ Help', 'help')],
         [Markup.button.callback('👥 Invite', 'invite'), Markup.button.callback('☎️ Support', 'support')]
       ])

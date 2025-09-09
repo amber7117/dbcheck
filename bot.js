@@ -106,7 +106,7 @@ bot.start(async (ctx) => {
     tr(ctx, 'start.comboQuery.examples',
       '/query Ahmad Faizal\n/query 0123456789\n/query 90010111XXXX') +
     `\n\n⚠️ ` + tr(ctx, 'start.fieldsLimit',
-      'This bot shows 4 fields: Name / ID Card / Phone / Address. Use Premium for more.');
+      'This bot shows 4 fields: Name / ID Card / Phone / Address. Use Advance for more.');
 
   await ctx.reply(text, {
     parse_mode: 'HTML',

@@ -55,6 +55,8 @@ async function ensureCookies(page) {
 async function search(queryText) {
   let browser;
   try {
+    // Add a 1-second delay to prevent spamming
+    await new Promise(resolve => setTimeout(resolve, 1000));
     browser = await puppeteer.launch({
       args: chromium.args,
       defaultViewport: chromium.defaultViewport,
@@ -135,4 +137,3 @@ async function search(queryText) {
 }
 
 module.exports = search;
-

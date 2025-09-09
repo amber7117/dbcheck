@@ -9,6 +9,7 @@ const Developer = require('../models/developer');
 const search = require('../crawler/search');
 const config = require('../config');
 const csrf = require('tiny-csrf');
+const rateLimit = require('express-rate-limit');
 
 const router = express.Router();
 const csrfProtection = csrf(
@@ -17,6 +18,18 @@ const csrfProtection = csrf(
   ["/webhook/*"] // ignored paths
 );
 router.use(csrfProtection);
+
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 5, // limit each IP to 5 login requests per windowMs
+    message: 'Too many login attempts, please try again after 15 minutes'
+});
+
+const apiLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 100, // limit each IP to 100 requests per hour
+    message: 'Too many requests from this IP, please try again after an hour'
+});
 
 function checkAuth(req, res, next) {
     if (req.session.user) {
@@ -83,7 +96,7 @@ router.get('/admin', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'public', 'admin.html'));
 });
 
-router.post('/admin/login', async (req, res) => {
+router.post('/admin/login', loginLimiter, async (req, res) => {
     const { username, password } = req.body;
     const admin = await Admin.findOne({ username });
     if (admin && await admin.comparePassword(password)) {
@@ -169,7 +182,7 @@ async function apiAuth(req, res, next) {
     next();
 }
 
-router.post('/api/query', apiAuth, async (req, res) => {
+router.post('/api/query', apiLimiter, apiAuth, async (req, res) => {
     const { query } = req.body;
     if (!query) {
         return res.status(400).json({ message: 'Query is required' });
