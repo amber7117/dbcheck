@@ -6,7 +6,7 @@ const express = require('express');
 
 const User = require('./models/user');
 const QueryLog = require('./models/queryLog');
-const search = require('./crawler/search');
+const searchAndFormat = require('./crawler/search_and_format');
 const login = require('./crawler/login');
 const { assignDepositAddress, checkDeposits } = require('./services/topup');
 const hlrLookup = require('./hlrlookup'); // 新增
@@ -212,15 +212,20 @@ bot.command('query', async (ctx) => {
   const waitMsg = await ctx.reply('🔍 ' + tr(ctx, 'ui.searching', 'Searching, please wait...'));
 
   try {
-    const results = await search(queryText);
+    const resultOutput = await searchAndFormat(queryText);
     try { await ctx.deleteMessage(waitMsg.message_id); } catch {}
 
-    if (!results.length) {
+    // Handle cases where there are no results or an error occurred during search
+    if (resultOutput === 'No results found.') {
       await new QueryLog({ userId, query: queryText, results: 0, success: false }).save();
       return ctx.reply('⚠️ ' + tr(ctx, 'query.noResult', 'No matching results found. No points deducted.'));
     }
+    if (resultOutput.startsWith('An error occurred')) {
+      await new QueryLog({ userId, query: queryText, results: 0, success: false }).save();
+      return ctx.reply('❌ ' + tr(ctx, 'errors.searchError', 'Error occurred while searching. Please try again later.'));
+    }
 
-    // 原子扣 1 点（未扣成功则提示余额不足）
+    // If we have results, deduct points
     const dec = await User.findOneAndUpdate(
       { userId, points: { $gte: 1 } },
       { $inc: { points: -1 } },
@@ -230,25 +235,17 @@ bot.command('query', async (ctx) => {
       await new QueryLog({ userId, query: queryText, results: 0, success: false }).save();
       return ctx.reply(tr(ctx, 'errors.noPoints', '❌ You don’t have enough points. Please recharge.'));
     }
-    await new QueryLog({ userId, query: queryText, results: results.length, success: true }).save();
+    // Log success, result count is unknown here but the query was successful
+    await new QueryLog({ userId, query: queryText, results: 1, success: true }).save();
 
-    // 分块渲染（HTML）
-    const chunks = [];
-    let buf = `✅ ${tr(ctx, 'query.found', 'Found')} <b>${results.length}</b> ${tr(ctx, 'query.results', 'results')}:\n\n`;
-    for (const r of results) {
-      const block =
-`<b>${tr(ctx,'fields.name','Name')}:</b> ${htmlEsc(r.name || '')}
-<b>${tr(ctx,'fields.idcard','ID Card')}:</b> ${htmlEsc(r.idCard || '')}
-<b>${tr(ctx,'fields.phone','Phone')}:</b> ${htmlEsc(r.phone || '')}
-<b>${tr(ctx,'fields.address','Address')}:</b> ${htmlEsc(r.address || '')}
-——————————————
-`;
-      if ((buf + block).length > 4000) { chunks.push(buf); buf = ''; }
-      buf += block;
-    }
-    if (buf) chunks.push(buf);
-    for (const c of chunks) {
-      try { await ctx.reply(c, { parse_mode: 'HTML' }); } catch (e) { console.error(e); }
+    // Handle the output: either send a text file or a message
+    if (resultOutput.includes('.txt')) {
+      const filePath = resultOutput.split(': ')[1];
+      await ctx.reply(resultOutput); // Send the message "The result is too long..."
+      await ctx.replyWithDocument({ source: filePath }); // Send the file itself
+    } else {
+      // The result is short enough to be sent as a message
+      await ctx.reply(`<pre>${htmlEsc(resultOutput)}</pre>`, { parse_mode: 'HTML' });
     }
 
   } catch (e) {
