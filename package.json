@@ -1,0 +1,42 @@
+{
+  "name": "dbcheck-bot",
+  "version": "1.0.0",
+  "description": "Telegram bot with Puppeteer crawler and MongoDB (DBCheck)",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js",
+    "dev": "nodemon bot.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@sparticuz/chromium": "^138.0.2",
+    "axios": "^1.11.0",
+    "axios-cookiejar-support": "^6.0.4",
+    "cheerio": "^1.1.2",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "mongoose": "^7.6.1",
+    "puppeteer": "^22.13.1",
+    "puppeteer-core": "^24.17.1",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "random-useragent": "^0.5.0",
+    "telegraf": "^4.16.3",
+    "tough-cookie": "^5.1.2",
+    "tronweb": "^6.0.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  },
+  "keywords": [
+    "telegram-bot",
+    "puppeteer",
+    "mongoose",
+    "telegraf",
+    "cloud-run"
+  ],
+  "author": "Herbert Lim",
+  "license": "MIT"
+}
