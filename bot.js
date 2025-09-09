@@ -6,7 +6,7 @@ const express = require('express');
 
 const User = require('./models/user');
 const QueryLog = require('./models/queryLog');
-const searchAndFormat = require('./crawler/search_and_format');
+const search = require('./crawler/search');
 const login = require('./crawler/login');
 const { assignDepositAddress, checkDeposits } = require('./services/topup');
 const hlrLookup = require('./hlrlookup'); // 新增
@@ -212,7 +212,7 @@ bot.command('query', async (ctx) => {
   const waitMsg = await ctx.reply('🔍 ' + tr(ctx, 'ui.searching', 'Searching, please wait...'));
 
   try {
-    const resultOutput = await searchAndFormat(queryText);
+    const resultOutput = await search(queryText);
     try { await ctx.deleteMessage(waitMsg.message_id); } catch {}
 
     // Handle cases where there are no results or an error occurred during search
