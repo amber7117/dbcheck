@@ -8,7 +8,31 @@ const login = require('./login');
 
 puppeteer.use(StealthPlugin());
 
-// --- ensure cookies are valid and attached ---
+let browserInstance = null;
+
+async function getBrowser() {
+  if (!browserInstance) {
+    browserInstance = await puppeteer.launch({
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless,
+    });
+  }
+  return browserInstance;
+}
+
+async function withRetries(fn, retries = 3) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (i === retries - 1) throw error;
+      await new Promise(res => setTimeout(res, 1000 * (i + 1)));
+    }
+  }
+}
+
 async function ensureCookies(page) {
   let dbCookies = await Cookie.findOne({ name: "zowner" });
 
@@ -18,9 +42,8 @@ async function ensureCookies(page) {
     dbCookies = await Cookie.findOne({ name: "zowner" });
   }
 
-  // sanitize cookies
   const validCookies = dbCookies.cookies.map(c => ({
-    name: c.name || c.key,   // fallback if saved as "key"
+    name: c.name || c.key,
     value: c.value,
     domain: c.domain || "zowner.info",
     path: c.path || "/",
@@ -31,7 +54,6 @@ async function ensureCookies(page) {
 
   await page.setCookie(...validCookies);
 
-  // check if session still valid
   await page.goto('https://zowner.info/index.php', { waitUntil: 'networkidle2' });
   if (page.url().includes('login.php')) {
     console.log("⚠️ Cookies expired, re-login...");
@@ -53,7 +75,6 @@ async function ensureCookies(page) {
   }
 }
 
-// --- perform search ---
 function nowTs() {
   const d = new Date();
   const p = (n) => (n < 10 ? '0' + n : '' + n);
@@ -62,22 +83,7 @@ function nowTs() {
   )}${p(d.getSeconds())}`;
 }
 
-async function search(queryText) {
-  let browser;
-  try {
-    // Add a 1-second delay to prevent spamming
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    browser = await puppeteer.launch({
-      args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath(),
-      headless: chromium.headless,
-    });
-
-    const page = await browser.newPage();
-    await ensureCookies(page);
-
-    // --- choose category ---
+async function doSearch(page, queryText) {
     let category = 3; // default: name
     if (/^\d+$/.test(queryText)) {
       if (queryText.length === 12) {
@@ -87,7 +93,6 @@ async function search(queryText) {
       }
     }
 
-    // fill form
     await page.evaluate((term, cat) => {
       const input = document.querySelector('input[name="keyword"]');
       const select = document.querySelector('select[name="category"]');
@@ -98,11 +103,9 @@ async function search(queryText) {
       }
     }, queryText, category);
 
-    // wait for results
     await page.waitForSelector('#dataTable tbody tr, .no-results', { timeout: 80000 });
 
-    // extract data
-    const results = await page.evaluate(() => {
+    return await page.evaluate(() => {
       const rows = Array.from(document.querySelectorAll('#dataTable tbody tr'));
       const seen = new Set();
       const items = [];
@@ -137,35 +140,41 @@ async function search(queryText) {
       });
       return items;
     });
+}
 
-    await browser.close();
+async function search(queryText) {
+  let page;
+  try {
+    const browser = await getBrowser();
+    page = await browser.newPage();
+    await ensureCookies(page);
+
+    const results = await withRetries(() => doSearch(page, queryText));
 
     if (!results || results.length === 0) {
       return 'No results found.';
     }
 
-    // Format the results into a string only if there are results
     let output = 'IC NO. | NAME | OLD IC NO. | ADDRESS | PHONE\n';
     output += '--------------------------------------------------\n';
     results.forEach(item => {
       output += `${item.idCard || ''} | ${item.name} | | ${item.address} | ${item.phone}\n`;
     });
 
-    // If the output is too long, save to a file
-    if (output.length > 4000) { // Telegram message limit is 4096
+    if (output.length > 4000) {
       const fileName = `search_results_${nowTs()}.txt`;
-      const filePath = path.join('/tmp', fileName); // Use /tmp for Render
+      const filePath = path.join('/tmp', fileName);
       await fs.writeFile(filePath, output);
       console.log(`Results saved to ${filePath}`);
       return `The result is too long. It has been saved to a file: ${filePath}`;
     } else {
       return output;
     }
-
   } catch (err) {
-    if (browser) await browser.close();
-    console.error('An error occurred during the search:', err);
+    console.error(`[SEARCH_ERROR] Query: "${queryText}" - Error: ${err.stack}`);
     return 'An error occurred while searching. Please try again later.';
+  } finally {
+    if (page) await page.close();
   }
 }
 
