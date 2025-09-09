@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bot Control Panel</title>
+    <link rel="stylesheet" href="https://unpkg.com/antd/dist/antd.min.css">
+    <script src="https://unpkg.com/react/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <script src="https://unpkg.com/antd/dist/antd.min.js"></script>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { Form, Input, Button, Card, message, Statistic } = antd;
+        const { useState, useEffect } = React;
+
+        const App = () => {
+            const [points, setPoints] = useState(0);
+
+            useEffect(() => {
+                fetchPoints();
+            }, []);
+
+            const fetchPoints = async () => {
+                const response = await fetch('/user/points');
+                const data = await response.json();
+                setPoints(data.points);
+            };
+
+            const onFinish = async (values) => {
+                message.loading({ content: 'Setting webhook...', key: 'webhook' });
+                try {
+                    const response = await fetch('/set-webhook', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(values),
+                    });
+                    const result = await response.json();
+                    if (result.ok) {
+                        message.success({ content: 'Webhook set successfully!', key: 'webhook' });
+                    } else {
+                        message.error({ content: `Error: ${result.description}`, key: 'webhook' });
+                    }
+                } catch (error) {
+                    message.error({ content: `Error: ${error.message}`, key: 'webhook' });
+                }
+            };
+
+            return (
+                <div style={{ padding: '50px' }}>
+                    <Card title="Bot Control Panel">
+                        <Statistic title="Your Points" value={points} />
+                        <Button onClick={fetchPoints} style={{ marginBottom: '20px' }}>Refresh</Button>
+                        <Form onFinish={onFinish}>
+                            <Form.Item label="Bot Token" name="botToken" rules={[{ required: true }]}>
+                                <Input />
+                            </Form.Item>
+                            <Form.Item label="Render URL" name="renderUrl" rules={[{ required: true }]}>
+                                <Input placeholder="e.g., https://myapp.onrender.com" />
+                            </Form.Item>
+                            <Form.Item>
+                                <Button type="primary" htmlType="submit">Set Webhook</Button>
+                            </Form.Item>
+                        </Form>
+                        <a href="/logout">Logout</a>
+                    </Card>
+                </div>
+            );
+        };
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>

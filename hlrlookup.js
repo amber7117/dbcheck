@@ -1,10 +1,11 @@
 const axios = require('axios');
+const config = require('./config');
 
 async function lookup(phoneNumber) {
   try {
     const response = await axios.get(`https://www.hlr-lookups.com/api/v2/hlr-lookup`, {
       params: {
-        api_key: process.env.HLR_API_KEY,
+        api_key: config.hlrApiKey,
         msisdn: phoneNumber
       }
     });
