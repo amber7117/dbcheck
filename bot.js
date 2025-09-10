@@ -300,16 +300,34 @@ bot.command('lookup', async (ctx) => {
 
     const mp = res.mobile_phone || res; // 兼容形态
     const lines = [];
-    const add = (label, val) => val && lines.push(`<b>${htmlEsc(label)}:</b> ${htmlEsc(val)}`);
+    const add = (label, val) => {
+      if (val !== null && val !== undefined && val !== '') {
+        lines.push(`<b>${htmlEsc(label)}:</b> ${htmlEsc(val)}`);
+      }
+    };
 
-    add(tr(ctx, 'lookup.fields.msisdn', 'MSISDN'), mp.msisdn || msisdn);
-    add(tr(ctx, 'lookup.fields.status', 'Connectivity'), mp.connectivity_status);
-    add(tr(ctx, 'lookup.fields.original', 'Original Network'), mp.original_network_name);
-    add(tr(ctx, 'lookup.fields.current', 'Current Network'), mp.ported_network_name);
-    add(tr(ctx, 'lookup.fields.roaming', 'Roaming Network'), mp.roaming_network_name);
+    add(tr(ctx, 'lookup.fields.id', '查询ID'), mp.id);
+    add(tr(ctx, 'lookup.fields.msisdn', '手机号码'), mp.msisdn || msisdn);
+    add(tr(ctx, 'lookup.fields.status', '连接状态'), mp.connectivity_status);
+    add(tr(ctx, 'lookup.fields.mccmnc', 'MCCMNC'), mp.mccmnc);
+    add(tr(ctx, 'lookup.fields.mcc', '移动国家码'), mp.mcc);
+    add(tr(ctx, 'lookup.fields.mnc', '移动网络码'), mp.mnc);
+    add(tr(ctx, 'lookup.fields.imsi', 'IMSI'), mp.imsi);
+    add(tr(ctx, 'lookup.fields.msin', 'MSIN'), mp.msin);
+    add(tr(ctx, 'lookup.fields.msc', 'MSC'), mp.msc);
+    add(tr(ctx, 'lookup.fields.original_network', '原始网络名称'), mp.original_network_name);
+    add(tr(ctx, 'lookup.fields.original_country', '原始国家'), `${mp.original_country_name} / ${mp.original_country_code} / ${mp.original_country_prefix}`);
     if (typeof mp.is_ported === 'boolean') {
-      add(tr(ctx, 'lookup.fields.ported', 'Ported'), mp.is_ported ? tr(ctx, 'ui.yes', 'YES') : tr(ctx, 'ui.no', 'NO'));
+      add(tr(ctx, 'lookup.fields.ported', '是否携号转网'), mp.is_ported ? tr(ctx, 'ui.yes', 'YES') : tr(ctx, 'ui.no', 'NO'));
     }
+    add(tr(ctx, 'lookup.fields.ported_network', '现网名称'), mp.ported_network_name);
+    if (mp.ported_country_name) {
+      add(tr(ctx, 'lookup.fields.ported_country', '现网国家'), `${mp.ported_country_name} / ${mp.ported_country_code} / ${mp.ported_country_prefix}`);
+    }
+    if (typeof mp.is_roaming === 'boolean') {
+      add(tr(ctx, 'lookup.fields.roaming', '是否漫游'), mp.is_roaming ? tr(ctx, 'ui.yes', 'YES') : tr(ctx, 'ui.no', 'NO'));
+    }
+    add(tr(ctx, 'lookup.fields.roaming_network', '漫游网络'), mp.roaming_network_name);
 
     const body =
       `✅ ${tr(ctx,'lookup.done','HLR lookup result')}:\n\n` +
