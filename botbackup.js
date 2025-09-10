@@ -9,9 +9,9 @@ const QueryLog = require('./models/queryLog');
 const search = require('./crawler/search');
 const login = require('./crawler/login');
 const { assignDepositAddress, checkDeposits } = require('./services/topup');
-const logger = require('./utils/logger');
+const logger = require('./logger');
 const { toE164 } = require('./normalize');
-const { checkAndConsume } = require('./models/rateLimiter');
+const { checkAndConsume } = require('./rateLimiter');
 const { hlrLookupE164, ntLookupE164, mnpLookupE164 } = require('./service');
 
 // ==== ENV ====
@@ -339,65 +339,6 @@ bot.on('text', async (ctx) => {
   if (ctx.message.text.startsWith('/')) return;
   ctx.message.text = `/query ${ctx.message.text}`;
   return bot.handleUpdate(ctx.update);
-});
-
-async function guard(ctx) {
-  const userId = String(ctx.from.id);
-  const rate = await checkAndConsume(userId);
-  if (!rate.allowed) {
-    await ctx.reply('请求过于频繁，请稍后再试（已达每分钟上限）。');
-    return false;
-  }
-  return true;
-}
-
-function render(obj) {
-  // 简单渲染，可按你需要展开字段
-  return '```\n' + JSON.stringify(obj, null, 2) + '\n```';
-}
-
-bot.command('hlr', async (ctx) => {
-  if (!await guard(ctx)) return;
-  const parts = ctx.message.text.split(/\s+/);
-  const input = parts[1];
-  const e164 = toE164(input);
-  if (!e164) return ctx.reply('请输入有效号码，例如：/hlr +60123456789');
-
-  try {
-    const { cache, data } = await hlrLookupE164(e164);
-    await ctx.replyWithMarkdown(`HLR 结果 (${cache ? '缓存' : '实时'}):\n${render(data)}`);
-  } catch (e) {
-    logger.error(e);
-    await ctx.reply('查询失败：' + (e?.response?.data?.message || e.message));
-  }
-});
-
-bot.command('nt', async (ctx) => {
-  if (!await guard(ctx)) return;
-  const parts = ctx.message.text.split(/\s+/);
-  const e164 = toE164(parts[1]);
-  if (!e164) return ctx.reply('请输入有效号码，例如：/nt +60123456789');
-
-  try {
-    const { cache, data } = await ntLookupE164(e164);
-    await ctx.replyWithMarkdown(`NT 结果 (${cache ? '缓存' : '实时'}):\n${render(data)}`);
-  } catch (e) {
-    await ctx.reply('查询失败：' + (e?.response?.data?.message || e.message));
-  }
-});
-
-bot.command('mnp', async (ctx) => {
-  if (!await guard(ctx)) return;
-  const parts = ctx.message.text.split(/\s+/);
-  const e164 = toE164(parts[1]);
-  if (!e164) return ctx.reply('请输入有效号码，例如：/mnp +60123456789');
-
-  try {
-    const { cache, data } = await mnpLookupE164(e164);
-    await ctx.replyWithMarkdown(`MNP 结果 (${cache ? '缓存' : '实时'}):\n${render(data)}`);
-  } catch (e) {
-    await ctx.reply('查询失败：' + (e?.response?.data?.message || e.message));
-  }
 });
 
 // ====== 充值：汇总入口（USDT / Stars）======
