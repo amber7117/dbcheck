@@ -12,6 +12,7 @@ const { assignDepositAddress, checkDeposits } = require('./services/topup');
 const logger = require('./utils/logger');
 const { toE164 } = require('./normalize');
 const { checkAndConsume } = require('./models/rateLimiter');
+const { hlrLookup } = require('./hlrlookup');
 const { hlrLookupE164, ntLookupE164, mnpLookupE164 } = require('./service');
 
 // ==== ENV ====
