@@ -22,6 +22,7 @@
     "express-rate-limit": "^8.1.0",
     "express-session": "^1.18.2",
     "mongoose": "^7.6.1",
+    "node-hlr-client": "^2.0.2",
     "puppeteer": "^22.13.1",
     "puppeteer-core": "^24.17.1",
     "puppeteer-extra": "^3.3.6",
