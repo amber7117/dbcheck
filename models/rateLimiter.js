@@ -1,5 +1,5 @@
-const RateBucket = require('./models/RateBucket');
-const { ratePerMinute } = require('./config');
+const RateBucket = require('./RateBucket');
+const { ratePerMinute } = require('../config');
 
 /**
  * 简易限流：按 Telegram userId 每分钟不超过 N 次

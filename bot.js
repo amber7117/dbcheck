@@ -13,7 +13,7 @@ const login = require('./crawler/login');
 const { assignDepositAddress, checkDeposits } = require('./services/topup');
 const logger = require('./logger');
 const { toE164 } = require('./normalize');
-const { checkAndConsume } = require('./rateLimiter');
+const { checkAndConsume } = require('./models/rateLimiter');
 const { hlrLookupE164, ntLookupE164, mnpLookupE164 } = require('./service');
 
 // ==== ENV ====
