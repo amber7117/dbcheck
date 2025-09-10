@@ -12,7 +12,7 @@ const { assignDepositAddress, checkDeposits } = require('./services/topup');
 const logger = require('./utils/logger');
 const { toE164 } = require('./normalize');
 const { checkAndConsume } = require('./models/rateLimiter');
-const { hlrLookup } = require('./hlrlookup');
+const { hlrLookup, ntLookup, mnpLookup } = require('./hlrlookup');
 const { hlrLookupE164, ntLookupE164, mnpLookupE164 } = require('./service');
 
 // ==== ENV ====
@@ -300,28 +300,20 @@ bot.command('lookup', async (ctx) => {
 
     const mp = res.mobile_phone || res; // 兼容形态
     const lines = [];
-    const add = (label, val) => lines.push(`<b>${htmlEsc(label)}:</b> ${htmlEsc(val ?? '')}`);
+    const add = (label, val) => val && lines.push(`<b>${htmlEsc(label)}:</b> ${htmlEsc(val)}`);
 
-    add(tr(ctx,'lookup.fields.msisdn','MSISDN'), mp.msisdn || msisdn);
-    add(tr(ctx,'lookup.fields.status','Connectivity'), mp.connectivity_status);
-    add(tr(ctx,'lookup.fields.mccmnc','MCCMNC'), (mp.mccmnc != null ? String(mp.mccmnc) : ''));
-    if (mp.original_network) {
-      add(tr(ctx,'lookup.fields.original','Original Network'),
-        `${mp.original_network.country_code || ''} ${mp.original_network.network_name || ''}`.trim());
+    add(tr(ctx, 'lookup.fields.msisdn', 'MSISDN'), mp.msisdn || msisdn);
+    add(tr(ctx, 'lookup.fields.status', 'Connectivity'), mp.connectivity_status);
+    add(tr(ctx, 'lookup.fields.original', 'Original Network'), mp.original_network_name);
+    add(tr(ctx, 'lookup.fields.current', 'Current Network'), mp.ported_network_name);
+    add(tr(ctx, 'lookup.fields.roaming', 'Roaming Network'), mp.roaming_network_name);
+    if (typeof mp.is_ported === 'boolean') {
+      add(tr(ctx, 'lookup.fields.ported', 'Ported'), mp.is_ported ? tr(ctx, 'ui.yes', 'YES') : tr(ctx, 'ui.no', 'NO'));
     }
-    if (mp.ported_network) {
-      add(tr(ctx,'lookup.fields.current','Current Network'),
-        `${mp.ported_network.country_code || ''} ${mp.ported_network.network_name || ''}`.trim());
-    }
-    if (mp.roaming_network) {
-      add(tr(ctx,'lookup.fields.roaming','Roaming Network'),
-        `${mp.roaming_network.country_code || ''} ${mp.roaming_network.network_name || ''}`.trim());
-    }
-    if (typeof mp.is_ported === 'boolean') add(tr(ctx,'lookup.fields.ported','Ported'), mp.is_ported ? 'YES' : 'NO');
 
     const body =
       `✅ ${tr(ctx,'lookup.done','HLR lookup result')}:\n\n` +
-      lines.join('\n');
+      `<blockquote>${lines.join('\n')}</blockquote>`;
 
     await ctx.reply(body, { parse_mode: 'HTML' });
 
@@ -332,6 +324,116 @@ bot.command('lookup', async (ctx) => {
     try { await ctx.deleteMessage(waitMsg.message_id); } catch {}
     await new QueryLog({ userId, query: `[HLR] ${msisdn}`, results: 0, success: false }).save();
     await ctx.reply('❌ ' + tr(ctx, 'lookup.fail', 'HLR request failed. Please try again later.'));
+  }
+});
+
+// ====== /ntlookup (Number Type Lookup) ======
+bot.command('ntlookup', async (ctx) => {
+  const userId = ctx.from.id;
+  const user = await User.findOne({ userId });
+  if (!user) return ctx.reply(tr(ctx, 'errors.notRegistered', '❌ You are not registered yet. Use /start first.'));
+  const args = ctx.message.text.split(' ').slice(1);
+  if (!args.length) return ctx.reply(tr(ctx, 'lookup.usage', 'Usage: /ntlookup <phone-in-international-format>'));
+
+  if (!HLR_API_KEY || !HLR_API_SECRET) {
+    return ctx.reply('❌ ' + tr(ctx, 'lookup.apiMissing', 'HLR API key/secret not configured.'));
+  }
+
+  const number = args[0].replace(/[^\d+]/g, '');
+  const waitMsg = await ctx.reply('📡 ' + tr(ctx, 'lookup.querying', 'Querying Number Type, please wait...'));
+
+  try {
+    const res = await ntLookup(number, { apiKey: HLR_API_KEY, apiSecret: HLR_API_SECRET });
+
+    const dec = await User.findOneAndUpdate(
+      { userId, points: { $gte: 1 } },
+      { $inc: { points: -1 } },
+      { new: true }
+    );
+    if (!dec) {
+      try { await ctx.deleteMessage(waitMsg.message_id); } catch {}
+      return ctx.reply(tr(ctx, 'errors.noPoints', '❌ You don’t have enough points. Please recharge.'));
+    }
+
+    try { await ctx.deleteMessage(waitMsg.message_id); } catch {}
+
+    const lines = [];
+    const add = (label, val) => val && lines.push(`<b>${htmlEsc(label)}:</b> ${htmlEsc(val)}`);
+
+    add(tr(ctx, 'lookup.fields.number', 'Number'), res.number);
+    add(tr(ctx, 'lookup.fields.number_type', 'Number Type'), res.number_type);
+    add(tr(ctx, 'lookup.fields.original_country', 'Country'), res.original_country_name);
+    add(tr(ctx, 'lookup.fields.original_network', 'Original Network'), res.original_network_name);
+
+    const body =
+      `✅ ${tr(ctx,'lookup.done','Number Type lookup result')}:\n\n` +
+      `<blockquote>${lines.join('\n')}</blockquote>`;
+
+    await ctx.reply(body, { parse_mode: 'HTML' });
+
+    await new QueryLog({ userId, query: `[NT] ${number}`, results: 1, success: true }).save();
+
+  } catch (err) {
+    console.error('NT error:', err);
+    try { await ctx.deleteMessage(waitMsg.message_id); } catch {}
+    await new QueryLog({ userId, query: `[NT] ${number}`, results: 0, success: false }).save();
+    await ctx.reply('❌ ' + tr(ctx, 'lookup.fail', 'NT request failed. Please try again later.'));
+  }
+});
+
+// ====== /mnplookup (MNP Lookup) ======
+bot.command('mnplookup', async (ctx) => {
+  const userId = ctx.from.id;
+  const user = await User.findOne({ userId });
+  if (!user) return ctx.reply(tr(ctx, 'errors.notRegistered', '❌ You are not registered yet. Use /start first.'));
+  const args = ctx.message.text.split(' ').slice(1);
+  if (!args.length) return ctx.reply(tr(ctx, 'lookup.usage', 'Usage: /mnplookup <phone-in-international-format>'));
+
+  if (!HLR_API_KEY || !HLR_API_SECRET) {
+    return ctx.reply('❌ ' + tr(ctx, 'lookup.apiMissing', 'HLR API key/secret not configured.'));
+  }
+
+  const msisdn = args[0].replace(/[^\d+]/g, '');
+  const waitMsg = await ctx.reply('📡 ' + tr(ctx, 'lookup.querying', 'Querying MNP, please wait...'));
+
+  try {
+    const res = await mnpLookup(msisdn, { apiKey: HLR_API_KEY, apiSecret: HLR_API_SECRET });
+
+    const dec = await User.findOneAndUpdate(
+      { userId, points: { $gte: 1 } },
+      { $inc: { points: -1 } },
+      { new: true }
+    );
+    if (!dec) {
+      try { await ctx.deleteMessage(waitMsg.message_id); } catch {}
+      return ctx.reply(tr(ctx, 'errors.noPoints', '❌ You don’t have enough points. Please recharge.'));
+    }
+
+    try { await ctx.deleteMessage(waitMsg.message_id); } catch {}
+
+    const lines = [];
+    const add = (label, val) => val && lines.push(`<b>${htmlEsc(label)}:</b> ${htmlEsc(val)}`);
+
+    add(tr(ctx, 'lookup.fields.msisdn', 'MSISDN'), res.msisdn);
+    add(tr(ctx, 'lookup.fields.original', 'Original Network'), res.original_network_name);
+    add(tr(ctx, 'lookup.fields.current', 'Current Network'), res.ported_network_name);
+    if (typeof res.is_ported === 'boolean') {
+      add(tr(ctx, 'lookup.fields.ported', 'Ported'), res.is_ported ? tr(ctx, 'ui.yes', 'YES') : tr(ctx, 'ui.no', 'NO'));
+    }
+
+    const body =
+      `✅ ${tr(ctx,'lookup.done','MNP lookup result')}:\n\n` +
+      `<blockquote>${lines.join('\n')}</blockquote>`;
+
+    await ctx.reply(body, { parse_mode: 'HTML' });
+
+    await new QueryLog({ userId, query: `[MNP] ${msisdn}`, results: 1, success: true }).save();
+
+  } catch (err) {
+    console.error('MNP error:', err);
+    try { await ctx.deleteMessage(waitMsg.message_id); } catch {}
+    await new QueryLog({ userId, query: `[MNP] ${msisdn}`, results: 0, success: false }).save();
+    await ctx.reply('❌ ' + tr(ctx, 'lookup.fail', 'MNP request failed. Please try again later.'));
   }
 });
 
