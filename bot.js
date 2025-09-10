@@ -9,9 +9,9 @@ const QueryLog = require('./models/queryLog');
 const search = require('./crawler/search');
 const login = require('./crawler/login');
 const { assignDepositAddress, checkDeposits } = require('./services/topup');
-const logger = require('./logger');
+const logger = require('./utils/logger');
 const { toE164 } = require('./normalize');
-const { checkAndConsume } = require('./rateLimiter');
+const { checkAndConsume } = require('./models/rateLimiter');
 const { hlrLookupE164, ntLookupE164, mnpLookupE164 } = require('./service');
 
 // ==== ENV ====
