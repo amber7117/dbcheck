@@ -3,58 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Login</title>
-    <link rel="stylesheet" href="https://unpkg.com/antd/dist/antd.min.css">
-    <script src="https://unpkg.com/react/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
-    <script src="https://unpkg.com/antd/dist/antd.min.js"></script>
+    <title>Admin Panel</title>
+    <style>
+        body { font-family: sans-serif; margin: 2em; }
+        .container { max-width: 800px; margin: auto; }
+        .form-group { margin-bottom: 1em; }
+        label { display: block; margin-bottom: .5em; }
+        input, select { width: 100%; padding: .5em; }
+        button { padding: .7em 1.5em; }
+        #results { margin-top: 2em; white-space: pre-wrap; background: #f4f4f4; padding: 1em; }
+    </style>
 </head>
 <body>
-    <div id="root"></div>
-    <script type="text/babel">
-        const { Form, Input, Button, Card, message } = antd;
+    <div class="container">
+        <h1>Admin Panel</h1>
+        <div class="form-group">
+            <label for="action">Action:</label>
+            <select id="action">
+                <option value="user_info">Get User Info</option>
+                <option value="add_points">Add Points</option>
+                <option value="check_points">Check Points</option>
+                <option value="user_history">Get User History</option>
+                <option value="list_users">List All Users</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="userId">User ID (optional):</label>
+            <input type="text" id="userId" placeholder="Enter Telegram User ID">
+        </div>
+        <div class="form-group">
+            <label for="points">Points (for Add Points):</label>
+            <input type="number" id="points" placeholder="Enter points to add">
+        </div>
+        <button onclick="performAction()">Submit</button>
+        <div id="results"></div>
+    </div>
 
-        const App = () => {
-            const onFinish = async (values) => {
-                message.loading({ content: 'Logging in...', key: 'login' });
-                try {
-                    const response = await fetch('/admin/login', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(values),
-                    });
-                    if (response.ok) {
-                        window.location.href = '/admin/dashboard';
-                    } else {
-                        const result = await response.json();
-                        message.error({ content: `Error: ${result.message}`, key: 'login' });
-                    }
-                } catch (error) {
-                    message.error({ content: `Error: ${error.message}`, key: 'login' });
-                }
-            };
+    <script>
+        async function performAction() {
+            const action = document.getElementById('action').value;
+            const userId = document.getElementById('userId').value;
+            const points = document.getElementById('points').value;
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.textContent = 'Loading...';
 
-            return (
-                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-                    <Card title="Admin Login">
-                        <Form onFinish={onFinish}>
-                            <Form.Item label="Username" name="username" rules={[{ required: true }]}>
-                                <Input />
-                            </Form.Item>
-                            <Form.Item label="Password" name="password" rules={[{ required: true }]}>
-                                <Input.Password />
-                            </Form.Item>
-                            <Form.Item>
-                                <Button type="primary" htmlType="submit">Login</Button>
-                            </Form.Item>
-                        </Form>
-                    </Card>
-                </div>
-            );
-        };
+            let url = `/admin/${action}`;
+            const body = {};
 
-        ReactDOM.render(<App />, document.getElementById('root'));
+            if (userId) body.userId = userId;
+            if (points) body.points = points;
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const data = await response.json();
+                resultsDiv.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                resultsDiv.textContent = `Error: ${error.message}`;
+            }
+        }
     </script>
 </body>
 </html>

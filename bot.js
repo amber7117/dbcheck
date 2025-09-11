@@ -14,7 +14,7 @@ const { toE164 } = require('./normalize');
 const { checkAndConsume } = require('./models/rateLimiter');
 const { hlrLookup, ntLookup, mnpLookup } = require('./hlrlookup');
 const { hlrLookupE164, ntLookupE164, mnpLookupE164 } = require('./service');
-
+const { createTelegramLoginRouter } = require('./login');
 // ==== ENV ====
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -89,6 +89,9 @@ mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true 
     console.error("❌ Startup init failed:", err);
   }
 })();
+
+
+
 
 // ====== /start ======
 bot.start(async (ctx) => {
@@ -662,8 +665,20 @@ bot.catch((err, ctx) => {
 // ====== Express / Webhook ======
 const app = express();
 const WEBHOOK_PATH = `/webhook/${BOT_TOKEN}`;
+
 app.use(bot.webhookCallback(WEBHOOK_PATH));
 app.get("/", (req, res) => res.send("🤖 Bot is running on Cloud Run!"));
+const loginRouter = createTelegramLoginRouter({
+  botToken: process.env.BOT_TOKEN,
+  botUsername: process.env.BOT_USERNAME,
+  successRedirect: '/dashboard'
+});
+app.use(loginRouter);
+
+app.get('/', (req, res) => {
+  if (!req.session?.user) return res.redirect('/login');
+  res.send('欢迎，' + req.session.user.username);
+})
 
 // 可选：把定时充值扫描改为 Cloud Scheduler 调用这个路由
 app.post("/cron/check-deposits", async (req, res) => {
