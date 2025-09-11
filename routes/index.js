@@ -116,6 +116,24 @@ router.get('/admin/users', checkAdminAuth, async (req, res) => {
     res.json(users);
 });
 
+router.post('/admin/add-points', checkAdminAuth, async (req, res) => {
+    const { userId, points } = req.body;
+    await User.updateOne({ userId }, { $inc: { points: parseInt(points, 10) } });
+    res.sendStatus(200);
+});
+
+router.post('/admin/deduct-points', checkAdminAuth, async (req, res) => {
+    const { userId, points } = req.body;
+    await User.updateOne({ userId }, { $inc: { points: -parseInt(points, 10) } });
+    res.sendStatus(200);
+});
+
+router.post('/admin/delete-user', checkAdminAuth, async (req, res) => {
+    const { userId } = req.body;
+    await User.deleteOne({ userId });
+    res.sendStatus(200);
+});
+
 router.post('/admin/user/:userId/points', checkAdminAuth, async (req, res) => {
     await User.updateOne({ userId: req.params.userId }, { points: req.body.points });
     res.sendStatus(200);

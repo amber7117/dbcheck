@@ -3,6 +3,10 @@ require('dotenv').config();
 const { Telegraf, Markup } = require('telegraf');
 const mongoose = require('mongoose');
 const express = require('express');
+const path = require('path');
+const session = require('express-session');
+const MongoStore = require('connect-mongo');
+const routes = require('./routes');
 
 const User = require('./models/user');
 const QueryLog = require('./models/queryLog');
@@ -55,7 +59,7 @@ function tr(ctx, key, fallback, vars) {
   const lang = pickLang(ctx.from?.language_code);
   return tByLang(lang, key, fallback, vars);
 }
-const htmlEsc = (s = '') => s.toString().replace(/[&<>]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[ch]));
+const htmlEsc = (s = '') => s.toString().replace(/[&<>]/g, ch => ({'&':'&','<':'<','>':'>'}[ch]));
 
 // ==== Stars 套餐（可自行调整）====
 const STAR_PACKAGES = [
@@ -465,6 +469,37 @@ bot.on('text', async (ctx) => {
   return bot.handleUpdate(ctx.update);
 });
 
+bot.command('addpoints', async (ctx) => {
+  const userId = ctx.from.id;
+  const user = await User.findOne({ userId });
+  if (!user || !user.isAdmin) {
+    return ctx.reply('You are not authorized to use this command.');
+  }
+
+  const args = ctx.message.text.split(' ').slice(1);
+  if (args.length < 2) {
+    return ctx.reply('Usage: /addpoints <userId> <points>');
+  }
+
+  const targetUserId = args[0];
+  const points = parseInt(args[1], 10);
+
+  if (isNaN(points)) {
+    return ctx.reply('Invalid points value.');
+  }
+
+  try {
+    const targetUser = await User.findOneAndUpdate({ userId: targetUserId }, { $inc: { points } }, { new: true });
+    if (!targetUser) {
+      return ctx.reply('User not found.');
+    }
+    ctx.reply(`Successfully added ${points} points to user ${targetUserId}. New balance: ${targetUser.points}`);
+  } catch (error) {
+    console.error('Error adding points:', error);
+    ctx.reply('Failed to add points.');
+  }
+});
+
 async function guard(ctx) {
   const userId = String(ctx.from.id);
   const rate = await checkAndConsume(userId);
@@ -666,19 +701,25 @@ bot.catch((err, ctx) => {
 const app = express();
 const WEBHOOK_PATH = `/webhook/${BOT_TOKEN}`;
 
+app.use(express.static('public'));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(session({
+  secret: 'your-secret-key',
+  resave: false,
+  saveUninitialized: false,
+  store: MongoStore.create({ mongoUrl: MONGODB_URI })
+}));
+
 app.use(bot.webhookCallback(WEBHOOK_PATH));
-app.get("/", (req, res) => res.send("🤖 Bot is running on Cloud Run!"));
+app.use('/', routes);
+
 const loginRouter = createTelegramLoginRouter({
   botToken: process.env.BOT_TOKEN,
   botUsername: process.env.BOT_USERNAME,
   successRedirect: '/dashboard'
 });
 app.use(loginRouter);
-
-app.get('/', (req, res) => {
-  if (!req.session?.user) return res.redirect('/login');
-  res.send('欢迎，' + req.session.user.username);
-})
 
 // 可选：把定时充值扫描改为 Cloud Scheduler 调用这个路由
 app.post("/cron/check-deposits", async (req, res) => {

@@ -3,68 +3,154 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel</title>
-    <style>
-        body { font-family: sans-serif; margin: 2em; }
-        .container { max-width: 800px; margin: auto; }
-        .form-group { margin-bottom: 1em; }
-        label { display: block; margin-bottom: .5em; }
-        input, select { width: 100%; padding: .5em; }
-        button { padding: .7em 1.5em; }
-        #results { margin-top: 2em; white-space: pre-wrap; background: #f4f4f4; padding: 1em; }
-    </style>
+    <title>Admin Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
-    <div class="container">
-        <h1>Admin Panel</h1>
-        <div class="form-group">
-            <label for="action">Action:</label>
-            <select id="action">
-                <option value="user_info">Get User Info</option>
-                <option value="add_points">Add Points</option>
-                <option value="check_points">Check Points</option>
-                <option value="user_history">Get User History</option>
-                <option value="list_users">List All Users</option>
-            </select>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">Admin Panel</a>
+            <button class="btn btn-outline-danger" id="logoutBtn">Logout</button>
         </div>
-        <div class="form-group">
-            <label for="userId">User ID (optional):</label>
-            <input type="text" id="userId" placeholder="Enter Telegram User ID">
-        </div>
-        <div class="form-group">
-            <label for="points">Points (for Add Points):</label>
-            <input type="number" id="points" placeholder="Enter points to add">
-        </div>
-        <button onclick="performAction()">Submit</button>
-        <div id="results"></div>
+    </nav>
+
+    <div class="container mt-4">
+        <h2>User Management</h2>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>User ID</th>
+                    <th>Points</th>
+                    <th>Is Admin</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="userTableBody">
+                <!-- User data will be populated here -->
+            </tbody>
+        </table>
     </div>
 
     <script>
-        async function performAction() {
-            const action = document.getElementById('action').value;
-            const userId = document.getElementById('userId').value;
-            const points = document.getElementById('points').value;
-            const resultsDiv = document.getElementById('results');
-            resultsDiv.textContent = 'Loading...';
+        document.addEventListener('DOMContentLoaded', async () => {
+            await fetchUsers();
+        });
 
-            let url = `/admin/${action}`;
-            const body = {};
-
-            if (userId) body.userId = userId;
-            if (points) body.points = points;
-
+        async function fetchUsers() {
             try {
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
+                const response = await fetch('/admin/users');
+                if (!response.ok) {
+                    window.location.href = '/login.html';
+                    return;
+                }
+                const users = await response.json();
+                const userTableBody = document.getElementById('userTableBody');
+                userTableBody.innerHTML = '';
+
+                users.forEach(user => {
+                    const row = `
+                        <tr>
+                            <td>${user.userId}</td>
+                            <td>${user.points}</td>
+                            <td>${user.isAdmin ? 'Yes' : 'No'}</td>
+                            <td>
+                                <form class="d-inline-flex" onsubmit="addPoints(event, ${user.userId})">
+                                    <input type="number" class="form-control form-control-sm me-2" placeholder="Points" required>
+                                    <button type="submit" class="btn btn-primary btn-sm">Add</button>
+                                </form>
+                                <form class="d-inline-flex" onsubmit="deductPoints(event, ${user.userId})">
+                                    <input type="number" class="form-control form-control-sm me-2" placeholder="Points" required>
+                                    <button type="submit" class="btn btn-warning btn-sm">Deduct</button>
+                                </form>
+                                <button class="btn btn-danger btn-sm" onclick="deleteUser(${user.userId})">Delete</button>
+                            </td>
+                        </tr>
+                    `;
+                    userTableBody.innerHTML += row;
                 });
-                const data = await response.json();
-                resultsDiv.textContent = JSON.stringify(data, null, 2);
             } catch (error) {
-                resultsDiv.textContent = `Error: ${error.message}`;
+                console.error('Error fetching users:', error);
             }
         }
+
+        async function addPoints(event, userId) {
+            event.preventDefault();
+            const points = event.target.querySelector('input').value;
+            
+            try {
+                const response = await fetch('/admin/add-points', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ userId, points: parseInt(points) })
+                });
+
+                if (response.ok) {
+                    await fetchUsers();
+                } else {
+                    alert('Failed to add points');
+                }
+            } catch (error) {
+                console.error('Error adding points:', error);
+            }
+        }
+
+        async function deductPoints(event, userId) {
+            event.preventDefault();
+            const points = event.target.querySelector('input').value;
+            
+            try {
+                const response = await fetch('/admin/deduct-points', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ userId, points: parseInt(points) })
+                });
+
+                if (response.ok) {
+                    await fetchUsers();
+                } else {
+                    alert('Failed to deduct points');
+                }
+            } catch (error) {
+                console.error('Error deducting points:', error);
+            }
+        }
+
+        async function deleteUser(userId) {
+            if (!confirm('Are you sure you want to delete this user?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/admin/delete-user', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ userId })
+                });
+
+                if (response.ok) {
+                    await fetchUsers();
+                } else {
+                    alert('Failed to delete user');
+                }
+            } catch (error) {
+                console.error('Error deleting user:', error);
+            }
+        }
+
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            try {
+                await fetch('/admin/logout', { method: 'POST' });
+                window.location.href = '/login.html';
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+        });
     </script>
 </body>
 </html>

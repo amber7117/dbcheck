@@ -27,6 +27,14 @@ async function listAllUsers() {
   return User.find({}).sort({ userId: 1 });
 }
 
+async function deductPoints(targetUserId, points) {
+  return User.findOneAndUpdate({ userId: targetUserId }, { $inc: { points: -parseInt(points, 10) } }, { new: true });
+}
+
+async function deleteUser(targetUserId) {
+  return User.findOneAndDelete({ userId: targetUserId });
+}
+
 module.exports = {
   isAdmin,
   getUserInfo,
@@ -34,4 +42,6 @@ module.exports = {
   checkPoints,
   getUserHistory,
   listAllUsers,
+  deductPoints,
+  deleteUser,
 };

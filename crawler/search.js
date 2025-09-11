@@ -169,7 +169,6 @@ async function doSearch(page, queryText) {
 
   return await page.evaluate((selectors) => {
     const rows = Array.from(document.querySelectorAll(selectors.DATA_ROWS));
-    const seen = new Set();
     const items = [];
 
     rows.forEach(row => {
@@ -188,11 +187,7 @@ async function doSearch(page, queryText) {
         ? idCard 
         : (oldId && oldId !== 'NULL' ? oldId : '');
 
-      if (!finalId || !phone) return;
-
-      const key = `${finalId}-${phone}`;
-      if (seen.has(key)) return;
-      seen.add(key);
+      if (!finalId) return;
 
       items.push({
         name: name || 'Unknown',
@@ -207,14 +202,49 @@ async function doSearch(page, queryText) {
 }
 
 /**
+ * Group search results by person (idCard)
+ */
+function groupResults(results) {
+  const grouped = new Map();
+
+  results.forEach(item => {
+    const id = item.idCard;
+    if (!grouped.has(id)) {
+      grouped.set(id, {
+        name: item.name,
+        idCard: item.idCard,
+        phones: new Set(),
+        addresses: new Set()
+      });
+    }
+    
+    const person = grouped.get(id);
+    if (item.phone && item.phone !== 'NULL') {
+      person.phones.add(item.phone);
+    }
+    if (item.address && item.address !== 'NULL') {
+      person.addresses.add(item.address);
+    }
+  });
+
+  return Array.from(grouped.values()).map(person => ({
+    ...person,
+    phones: Array.from(person.phones),
+    addresses: Array.from(person.addresses)
+  }));
+}
+
+/**
  * Format search results into readable output
  */
 function formatResults(results) {
   let output = 'IC NO.      | NAME.          | OLD IC NO. |            ADDRESS           | PHONE\n';
   output += '-------------------------------------------------------------------------------------\n';
   
-  results.forEach(item => {
-    output += `${item.idCard || ''} | ${item.name} | | ${item.address} | ${item.phone}\n`;
+  results.reverse().forEach(item => {
+    const addresses = item.addresses.join(', ');
+    const phones = item.phones.join(', ');
+    output += `${item.idCard || ''} | ${item.name} | | ${addresses} | ${phones}\n`;
   });
   
   return output;
@@ -248,7 +278,8 @@ async function search(queryText) {
       return 'No results found.';
     }
 
-    const output = formatResults(results);
+    const groupedResults = groupResults(results);
+    const output = formatResults(groupedResults);
 
     return output.length > CONFIG.FILE.MAX_OUTPUT_LENGTH
       ? await saveResultsToFile(output)
