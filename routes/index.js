@@ -8,16 +8,9 @@ const Admin = require('../models/admin');
 const Developer = require('../models/developer');
 const search = require('../crawler/search');
 const config = require('../config');
-const csrf = require('tiny-csrf');
 const rateLimit = require('express-rate-limit');
 
 const router = express.Router();
-const csrfProtection = csrf(
-  "12345678901234567890123456789012", // secret
-  ["POST"], // methods
-  ["/webhook/*"] // ignored paths
-);
-router.use(csrfProtection);
 
 const loginLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes

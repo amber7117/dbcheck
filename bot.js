@@ -7,6 +7,7 @@ const path = require('path');
 const session = require('express-session');
 const MongoStore = require('connect-mongo');
 const cookieParser = require('cookie-parser');
+const csrf = require('tiny-csrf');
 const routes = require('./routes');
 
 const User = require('./models/user');
@@ -712,6 +713,11 @@ app.use(session({
   saveUninitialized: false,
   store: MongoStore.create({ mongoUrl: MONGODB_URI })
 }));
+app.use(csrf(
+  "12345678901234567890123456789012", // secret
+  ["POST"], // methods
+  ["/webhook/*"] // ignored paths
+));
 
 app.use(bot.webhookCallback(WEBHOOK_PATH));
 app.use('/', routes);
