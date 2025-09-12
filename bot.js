@@ -6,6 +6,7 @@ const express = require('express');
 const path = require('path');
 const session = require('express-session');
 const MongoStore = require('connect-mongo');
+const cookieParser = require('cookie-parser');
 const routes = require('./routes');
 
 const User = require('./models/user');
@@ -704,6 +705,7 @@ const WEBHOOK_PATH = `/webhook/${BOT_TOKEN}`;
 app.use(express.static('public'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 app.use(session({
   secret: 'your-secret-key',
   resave: false,
