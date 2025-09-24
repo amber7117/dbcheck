@@ -1,26 +1,100 @@
 {
-  "welcome": "👋\n\n🆔 ID Anda: `{userId}`\n💰 Baki Semasa: *{points} mata*\n\n🔎 Pertanyaan Pantas:\nHantar *nama / nombor telefon / nombor kad pengenalan*\n\n📑 Pertanyaan Gabungan:\nGunakan perintah */query* dengan pelbagai parameter\n/query Ahmad Faizal\n/query 0164441111\n/query 90010111XXXX\n\n⚠️ Bot ini hanya memaparkan 4 medan:\n*Nama, Kad Pengenalan, Telefon, Alamat*\n*Untuk yang lain pergi ke carian terperinci*",
-  "premium_search_prompt": "💎 *Perkhidmatan Carian Terperinci*\n\nTersedia:\n- 🏠 Carian Alamat\n- 📍 Geo-lokasi Telefon\n- 🚗 Carian Plat Lesen\n- … dan banyak lagi\n\n⚠️ Setiap carian terperinci berharga *50 mata*.\n💰 Baki anda: *{points} mata*\n\nAdakah anda mahu meneruskan?",
-  "premium_search_confirmed": "✅ 50 mata ditolak. Sila berikan butiran carian terperinci anda kepada @dbcheck.",
-  "premium_search_cancelled": "👋 Selamat kembali\n\n🆔 ID Anda: `{userId}`\n💰 Baki Semasa: *{points} mata*\n\n🔎 Pertanyaan Pantas:\nHantar *nama / nombor telefon / nombor kad pengenalan*\n\n📑 Pertanyaan Gabungan:\nGunakan perintah */query* dengan pelbagai parameter\n/query Wang Weilin\n/query 110101198906046034 xxLin\n/query Zhang San 1373xxxxx55\n\n⚠️ Bot ini hanya memaparkan 4 medan:\n*Nama, Kad Pengenalan, Telefon, Alamat*",
-  "balance_message": "💰 Baki semasa anda: *{points} mata*",
-  "lookup_prompt": "Sila berikan nombor telefon untuk dicari, cth., `/lookup +1234567890`",
-  "lookup_result": "✅ Carian berjaya:\n\n",
-  "no_points": "❌ Anda tidak mempunyai mata yang mencukupi. Sila tambah nilai.",
-  "query_prompt": "Sila berikan pertanyaan carian, cth. `/query John Smith`",
-  "searching": "🔍 Mencari, sila tunggu...",
-  "no_results": "⚠️ Tiada hasil yang sepadan ditemui. Tiada mata ditolak.",
-  "results_found": "✅ Menemui *{count}* hasil:\n\n{results}",
-  "search_error": "❌ Ralat berlaku semasa mencari. Sila cuba lagi nanti.",
-  "help_message": "💰 Baki: {points}\n\n📖 Cara Penggunaan:\n1️⃣ Pertanyaan Pantas: Hantar nama, ID, atau telefon secara langsung\n2️⃣ Pertanyaan Gabungan: Gunakan /query dengan pelbagai parameter\n3️⃣ Setiap pertanyaan yang berjaya akan menolak *1 mata*\n4️⃣ Tiada tolakan jika tiada hasil\n5️⃣ Jemput rakan untuk mendapatkan mata percuma\n6️⃣ Carian terperinci berharga *50 mata* (hubungi @dbcheck)",
-  "invite_message": "👥 Jemput rakan untuk menggunakan bot ini. Anda akan mendapat *1 mata* bagi setiap pendaftaran.\n\nPautan rujukan anda:\n{inviteLink}",
-  "support_message": "☎️ Hubungi sokongan: @dbcheck",
-  "not_registered": "❌ Anda belum berdaftar. Gunakan /start terlebih dahulu.",
-  "insufficient_balance": "❌ Baki tidak mencukupi. Sila hubungi @dbcheck untuk menambah nilai.",
-  "payment_prompt": "Sila pilih jumlah tambah nilai.",
-  "payment_successful": "Pembayaran berjaya!",
-  "invalid_number": "Nombor telefon tidak sah. Sila berikan nombor yang sah.",
-  "hlr_error": "Ralat berlaku semasa melakukan carian HLR. Sila cuba lagi nanti.",
+  "start": {
+    "welcome": "Selamat datang!",
+    "id": "🆔 ID Anda:",
+    "balance": "💰 Baki Semasa:",
+    "quickQuery": "🔎 Pertanyaan Pantas:",
+    "quickQuery.tip": "Hantar nama / telefon / ID secara terus",
+    "comboQuery": "📑 Pertanyaan Gabungan:",
+    "comboQuery.examples": "/query Ahmad Faizal\n/query 0123456789\n/query 90010111XXXX",
+    "fieldsLimit": "Bot ini menunjukkan 4 medan: Nama / Kad Pengenalan / Telefon / Alamat. Gunakan Carian Terperinci untuk lebih lanjut.",
+    "welcomeBack": "Selamat kembali"
+  },
+  "ui": {
+    "advance": "Carian Terperinci",
+    "recharge": "Tambah Nilai",
+    "help": "Bantuan",
+    "invite": "Jemput",
+    "support": "Sokongan",
+    "confirm50": "Sahkan (50 mata)",
+    "cancel": "Batal",
+    "searching": "Mencari, sila tunggu...",
+    "yes": "YA",
+    "no": "TIDAK"
+  },
+  "errors": {
+    "notRegistered": "❌ Anda belum berdaftar. Gunakan /start terlebih dahulu.",
+    "noPoints": "❌ Anda tidak mempunyai mata yang mencukupi. Sila tambah nilai.",
+    "searchError": "❌ Ralat berlaku semasa mencari. Sila cuba lagi nanti."
+  },
+  "premium": {
+    "title": "Perkhidmatan Carian Terperinci",
+    "available": "Tersedia:\n- 🏠 Carian Alamat\n- 📍 Geo-lokasi Telefon\n- 🚗 Carian Plat Lesen\n- … dan banyak lagi",
+    "cost": "Setiap carian terperinci berharga <b>50 mata</b>.",
+    "confirm": "Adakah anda mahu meneruskan?",
+    "afterPay": "✅ 50 mata ditolak. Sila berikan butiran carian terperinci anda kepada @dbcheck."
+  },
+  "query": {
+    "usage": "Sila berikan pertanyaan carian, cth. `/query John Smith`",
+    "noResult": "Tiada hasil yang sepadan ditemui. Tiada mata ditolak."
+  },
+  "lookup": {
+    "usage": "Penggunaan: /lookup <nombor-telefon-dalam-format-antarabangsa>",
+    "apiMissing": "Kunci/rahsia API HLR tidak dikonfigurasikan.",
+    "querying": "Membuat pertanyaan HLR, sila tunggu...",
+    "fields": {
+      "id": "ID Pertanyaan",
+      "msisdn": "Nombor Telefon",
+      "status": "Status Sambungan",
+      "mccmnc": "MCCMNC",
+      "mcc": "Kod Negara Mudah Alih",
+      "mnc": "Kod Rangkaian Mudah Alih",
+      "imsi": "IMSI",
+      "msin": "MSIN",
+      "msc": "MSC",
+      "original_network": "Nama Rangkaian Asal",
+      "original_country": "Negara Asal",
+      "ported": "Dialihkan",
+      "ported_network": "Nama Rangkaian Dialihkan",
+      "ported_country": "Negara Dialihkan",
+      "roaming": "Perayauan",
+      "roaming_network": "Rangkaian Perayauan",
+      "number": "Nombor",
+      "number_type": "Jenis Nombor",
+      "original": "Rangkaian Asal",
+      "current": "Rangkaian Semasa"
+    },
+    "done": "Hasil carian HLR",
+    "fail": "Permintaan HLR gagal. Sila cuba lagi nanti."
+  },
+  "recharge": {
+    "choose": "Pilih kaedah tambah nilai:",
+    "usdt": "Tambah Nilai",
+    "sendAtLeast": "Hantar sekurang-kurangnya",
+    "to": "ke",
+    "min": "Deposit minimum = 100 USDT",
+    "autoUpdate": "Baki anda akan dikemas kini secara automatik selepas pengesahan.",
+    "stars": {
+      "pick": "Pilih pakej Bintang:",
+      "desc": "Tambah nilai mata dengan membayar menggunakan Bintang Telegram",
+      "fail": "Gagal membuat invois Bintang.",
+      "success": "Pembayaran diterima. Mata ditambah:"
+    }
+  },
+  "points": "mata",
+  "help": {
+    "howTo": "Cara Penggunaan",
+    "quick": "Pantas: hantar nama/ID/telefon secara terus",
+    "combo": "Gabungan: gunakan /query dengan pelbagai parameter",
+    "cost": "Setiap pertanyaan yang berjaya akan menolak 1 mata",
+    "noDeduct": "Tiada tolakan jika tiada hasil",
+    "invite": "Jemput rakan untuk mendapatkan mata percuma",
+    "premium": "Carian terperinci berharga 50 mata"
+  },
+  "invite": {
+    "text": "Jemput rakan dan dapatkan 3 mata bagi setiap pendaftaran.",
+    "link": "Pautan rujukan anda:"
+  },
   "stars": {
     "pkg100": {
       "title": "100 Mata"

@@ -1,26 +1,100 @@
 {
-  "welcome": "👋\n\n🆔 Your ID: `{userId}`\n💰 Current Balance: *{points} points*\n\n🔎 Quick Query:\nSend *name / phone number / ID card number*\n\n📑 Combined Query:\nUse */query* command with multiple parameters\n/query Ahmad Faizal\n/query 0164441111\n/query 90010111XXXX\n\n⚠️ This bot only displays 4 fields:\n*Name, ID Card, Phone, Address*\n*For other go to advance search*",
-  "premium_search_prompt": "💎 *Advance Search Service*\n\nAvailable:\n- 🏠 Address Search\n- 📍 Phone Geo-location\n- 🚗 License Plate Search\n- … and more\n\n⚠️ Each advance search costs *50 points*.\n💰 Your balance: *{points} points*\n\nDo you want to proceed?",
-  "premium_search_confirmed": "✅ 50 points deducted. Please provide your advance search details to @dbcheck.",
-  "premium_search_cancelled": "👋 Welcome back\n\n🆔 Your ID: `{userId}`\n💰 Current Balance: *[points} points*\n\n🔎 Quick Query:\nSend *name / phone number / ID card number*\n\n📑 Combined Query:\nUse */query* command with multiple parameters\n/query Wang Weilin\n/query 110101198906046034 xxLin\n/query Zhang San 1373xxxxx55\n\n⚠️ This bot only displays 4 fields:\n*Name, ID Card, Phone, Address*",
-  "balance_message": "💰 Your current balance: *{points} points*",
-  "lookup_prompt": "Please provide a phone number to look up, e.g., `/lookup +1234567890`",
-  "lookup_result": "✅ Lookup successful:\n\n",
-  "no_points": "❌ You don’t have enough points. Please recharge.",
-  "query_prompt": "Please provide a search query, e.g. `/query John Smith`",
-  "searching": "🔍 Searching, please wait...",
-  "no_results": "⚠️ No matching results found. No points deducted.",
-  "results_found": "✅ Found *{count}* results:\n\n{results}",
-  "search_error": "❌ Error occurred while searching. Please try again later.",
-  "help_message": "💰 Balance: {points}\n\n📖 How to Use:\n1️⃣ Quick Query: Send a name, ID, or phone directly\n2️⃣ Combined Query: Use /query with multiple params\n3️⃣ Each successful query deducts *1 point*\n4️⃣ No deduction if no results\n5️⃣ Invite friends to earn free points\n6️⃣ Advance searches cost *50 points* (contact @dbcheck)",
-  "invite_message": "👥 Invite friends to use this bot. You’ll earn *1 point* per signup.\n\nYour referral link:\n{inviteLink}",
-  "support_message": "☎️ Contact support: @dbcheck",
-  "not_registered": "❌ You are not registered yet. Use /start first.",
-  "insufficient_balance": "❌ Insufficient balance. Please contact @dbcheck to recharge.",
-  "payment_prompt": "Please select a top-up amount.",
-  "payment_successful": "Payment successful!",
-  "invalid_number": "Invalid phone number. Please provide a valid number.",
-  "hlr_error": "An error occurred while performing the HLR lookup. Please try again later.",
+  "start": {
+    "welcome": "Welcome!",
+    "id": "🆔 Your ID:",
+    "balance": "💰 Current Balance:",
+    "quickQuery": "🔎 Quick Query:",
+    "quickQuery.tip": "Send name / phone / ID directly",
+    "comboQuery": "📑 Combined Query:",
+    "comboQuery.examples": "/query Ahmad Faizal\n/query 0123456789\n/query 90010111XXXX",
+    "fieldsLimit": "This bot shows 4 fields: Name / ID Card / Phone / Address. Use Advance for more.",
+    "welcomeBack": "Welcome back"
+  },
+  "ui": {
+    "advance": "Advance Search",
+    "recharge": "Top Up",
+    "help": "Help",
+    "invite": "Invite",
+    "support": "Support",
+    "confirm50": "Confirm (50 points)",
+    "cancel": "Cancel",
+    "searching": "Searching, please wait...",
+    "yes": "YES",
+    "no": "NO"
+  },
+  "errors": {
+    "notRegistered": "❌ You are not registered yet. Use /start first.",
+    "noPoints": "❌ You don’t have enough points. Please recharge.",
+    "searchError": "❌ Error occurred while searching. Please try again later."
+  },
+  "premium": {
+    "title": "Advance Search Service",
+    "available": "Available:\n- 🏠 Address Search\n- 📍 Phone Geo-location\n- 🚗 License Plate Search\n- … and more",
+    "cost": "Each advance search costs <b>50 points</b>.",
+    "confirm": "Do you want to proceed?",
+    "afterPay": "✅ 50 points deducted. Please provide your premium search details to @dbcheck."
+  },
+  "query": {
+    "usage": "Please provide a search query, e.g. `/query John Smith`",
+    "noResult": "No matching results found. No points deducted."
+  },
+  "lookup": {
+    "usage": "Usage: /lookup <phone-in-international-format>",
+    "apiMissing": "HLR API key/secret not configured.",
+    "querying": "Querying HLR, please wait...",
+    "fields": {
+      "id": "Query ID",
+      "msisdn": "Phone Number",
+      "status": "Connection Status",
+      "mccmnc": "MCCMNC",
+      "mcc": "Mobile Country Code",
+      "mnc": "Mobile Network Code",
+      "imsi": "IMSI",
+      "msin": "MSIN",
+      "msc": "MSC",
+      "original_network": "Original Network Name",
+      "original_country": "Original Country",
+      "ported": "Ported",
+      "ported_network": "Ported Network Name",
+      "ported_country": "Ported Country",
+      "roaming": "Roaming",
+      "roaming_network": "Roaming Network",
+      "number": "Number",
+      "number_type": "Number Type",
+      "original": "Original Network",
+      "current": "Current Network"
+    },
+    "done": "HLR lookup result",
+    "fail": "HLR request failed. Please try again later."
+  },
+  "recharge": {
+    "choose": "Choose a top-up method:",
+    "usdt": "Recharge",
+    "sendAtLeast": "Send at least",
+    "to": "to",
+    "min": "Minimum deposit = 100 USDT",
+    "autoUpdate": "Your balance will update automatically after confirmation.",
+    "stars": {
+      "pick": "Pick a Stars package:",
+      "desc": "Top up points by paying with Telegram Stars",
+      "fail": "Failed to create Stars invoice.",
+      "success": "Payment received. Points added:"
+    }
+  },
+  "points": "point",
+  "help": {
+    "howTo": "How to Use",
+    "quick": "Quick: send name/ID/phone directly",
+    "combo": "Combined: /query with multiple params",
+    "cost": "Each successful query deducts 1 point",
+    "noDeduct": "No deduction if no results",
+    "invite": "Invite friends to earn free points",
+    "premium": "Advance searches cost 50 points"
+  },
+  "invite": {
+    "text": "Invite friends and earn 3 points per signup.",
+    "link": "Your referral link:"
+  },
   "stars": {
     "pkg100": {
       "title": "100 Points"

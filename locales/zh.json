@@ -1,26 +1,100 @@
 {
-  "welcome": "👋\n\n🆔 您的 ID: `{userId}`\n💰 当前余额: *{points} 积分*\n\n🔎 快速查询:\n发送 *姓名 / 电话号码 / 身份证号码*\n\n📑 组合查询:\n使用 */query* 命令并带上多个参数\n/query Ahmad Faizal\n/query 0164441111\n/query 90010111XXXX\n\n⚠️ 此机器人仅显示 4 个字段:\n*姓名, 身份证, 电话, 地址*\n*其他请转至进阶搜寻*",
-  "premium_search_prompt": "💎 *进阶搜寻服务*\n\n可用:\n- 🏠 地址搜索\n- 📍 电话地理位置\n- 🚗 车牌搜索\n- … 等等\n\n⚠️ 每次进阶搜寻花费 *50 积分*.\n💰 您的余额: *{points} 积分*\n\n您要继续吗?",
-  "premium_search_confirmed": "✅ 已扣除 50 积分。请将您的进阶搜寻详情提供给 @dbcheck。",
-  "premium_search_cancelled": "👋 欢迎回来\n\n🆔 您的 ID: `{userId}`\n💰 当前余额: *{points} 积分*\n\n🔎 快速查询:\n发送 *姓名 / 电话号码 / 身份证号码*\n\n📑 组合查询:\n使用 */query* 命令并带上多个参数\n/query Wang Weilin\n/query 110101198906046034 xxLin\n/query Zhang San 1373xxxxx55\n\n⚠️ 此机器人仅显示 4 个字段:\n*姓名, 身份证, 电话, 地址*",
-  "balance_message": "💰 您当前的余额: *{points} 积分*",
-  "lookup_prompt": "请输入要查询的电话号码，例如：`/lookup +1234567890`",
-  "lookup_result": "✅ 查询成功:\n\n",
-  "no_points": "❌ 您的积分不足。请充值。",
-  "query_prompt": "请输入搜索查询，例如：`/query John Smith`",
-  "searching": "🔍 正在搜索，请稍候...",
-  "no_results": "⚠️ 未找到匹配结果。未扣除积分。",
-  "results_found": "✅ 找到 *{count}* 个结果:\n\n{results}",
-  "search_error": "❌ 搜索时发生错误。请稍后再试。",
-  "help_message": "💰 余额: {points}\n\n📖 如何使用:\n1️⃣ 快速查询: 直接发送姓名、身份证或电话\n2️⃣ 组合查询: 使用 /query 并带上多个参数\n3️⃣ 每次成功查询将扣除 *1 积分*\n4️⃣ 如果没有结果则不扣费\n5️⃣ 邀请朋友赚取免费积分\n6️⃣ 进阶搜寻花费 *50 积分* (联系 @dbcheck)",
-  "invite_message": "👥 邀请朋友使用此机器人。每次注册您将获得 *1 积分*。\n\n您的推荐链接:\n{inviteLink}",
-  "support_message": "☎️ 联系支持: @dbcheck",
-  "not_registered": "❌ 您尚未注册。请先使用 /start。",
-  "insufficient_balance": "❌ 余额不足。请联系 @dbcheck 充值。",
-  "payment_prompt": "请选择充值金额。",
-  "payment_successful": "支付成功！",
-  "invalid_number": "无效的电话号码。请输入有效的号码。",
-  "hlr_error": "执行 HLR 查询时出错。请稍后再试。",
+  "start": {
+    "welcome": "欢迎！",
+    "id": "🆔 您的 ID:",
+    "balance": "💰 当前余额:",
+    "quickQuery": "🔎 快速查询:",
+    "quickQuery.tip": "直接发送姓名 / 电话 / 身份证",
+    "comboQuery": "📑 组合查询:",
+    "comboQuery.examples": "/query Ahmad Faizal\n/query 0123456789\n/query 90010111XXXX",
+    "fieldsLimit": "此机器人显示4个字段：姓名 / 身份证 / 电话 / 地址。更多信息请使用高级搜索。",
+    "welcomeBack": "欢迎回来"
+  },
+  "ui": {
+    "advance": "高级搜索",
+    "recharge": "充值",
+    "help": "帮助",
+    "invite": "邀请",
+    "support": "支持",
+    "confirm50": "确认 (50 积分)",
+    "cancel": "取消",
+    "searching": "正在搜索，请稍候...",
+    "yes": "是",
+    "no": "否"
+  },
+  "errors": {
+    "notRegistered": "❌ 您尚未注册。请先使用 /start。",
+    "noPoints": "❌ 您的积分不足。请充值。",
+    "searchError": "❌ 搜索时发生错误。请稍后再试。"
+  },
+  "premium": {
+    "title": "高级搜索服务",
+    "available": "可用:\n- 🏠 地址搜索\n- 📍 电话地理位置\n- 🚗 车牌搜索\n- … 等等",
+    "cost": "每次高级搜索花费 <b>50 积分</b>。",
+    "confirm": "您要继续吗?",
+    "afterPay": "✅ 已扣除 50 积分。请将您的高级搜索详情提供给 @dbcheck。"
+  },
+  "query": {
+    "usage": "请输入搜索查询，例如：`/query John Smith`",
+    "noResult": "未找到匹配结果。未扣除积分。"
+  },
+  "lookup": {
+    "usage": "用法: /lookup <国际格式电话号码>",
+    "apiMissing": "HLR API 密钥/秘密未配置。",
+    "querying": "正在查询 HLR，请稍候...",
+    "fields": {
+      "id": "查询 ID",
+      "msisdn": "电话号码",
+      "status": "连接状态",
+      "mccmnc": "MCCMNC",
+      "mcc": "移动国家代码",
+      "mnc": "移动网络代码",
+      "imsi": "IMSI",
+      "msin": "MSIN",
+      "msc": "MSC",
+      "original_network": "原始网络名称",
+      "original_country": "原始国家",
+      "ported": "已携号转网",
+      "ported_network": "现网名称",
+      "ported_country": "现网国家",
+      "roaming": "正在漫游",
+      "roaming_network": "漫游网络",
+      "number": "号码",
+      "number_type": "号码类型",
+      "original": "原始网络",
+      "current": "当前网络"
+    },
+    "done": "HLR 查询结果",
+    "fail": "HLR 请求失败。请稍后再试。"
+  },
+  "recharge": {
+    "choose": "选择充值方式:",
+    "usdt": "充值",
+    "sendAtLeast": "至少发送",
+    "to": "到",
+    "min": "最低存款 = 100 USDT",
+    "autoUpdate": "确认后您的余额将自动更新。",
+    "stars": {
+      "pick": "选择星星套餐:",
+      "desc": "使用 Telegram 星星支付来充值积分",
+      "fail": "创建星星发票失败。",
+      "success": "收到付款。积分已添加:"
+    }
+  },
+  "points": "积分",
+  "help": {
+    "howTo": "如何使用",
+    "quick": "快速查询: 直接发送姓名、身份证或电话",
+    "combo": "组合查询: 使用 /query 并带上多个参数",
+    "cost": "每次成功查询将扣除 1 积分",
+    "noDeduct": "如果没有结果则不扣费",
+    "invite": "邀请朋友赚取免费积分",
+    "premium": "高级搜索花费 50 积分"
+  },
+  "invite": {
+    "text": "邀请朋友并为每次注册赚取 3 积分。",
+    "link": "您的推荐链接:"
+  },
   "stars": {
     "pkg100": {
       "title": "100 积分"

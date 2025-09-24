@@ -9,7 +9,8 @@ const UserSchema = new mongoose.Schema({
   lastCheckin: { type: Date },
   subscribed: { type: Boolean, default: false },
   subscriptionType: { type: String, enum: ['monthly', 'quarterly', 'permanent', null], default: null },
-  subscriptionExpiresAt: { type: Date }
+  subscriptionExpiresAt: { type: Date },
+  isActive: { type: Boolean, default: true }
 });
 
 module.exports = mongoose.model('User', UserSchema);

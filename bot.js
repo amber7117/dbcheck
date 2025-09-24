@@ -75,17 +75,42 @@ const STAR_PACKAGES = [
 
 // ==== BOT ====
 const bot = new Telegraf(BOT_TOKEN);
-const CHANNEL_ID = '@zznets'; // Your channel username
+const REQUIRED_CHANNELS = [
+  { name: 'Alphabay', id: '@zznets' }
+];
+// NOTE: The channel IDs above are placeholders. Please replace them with your actual channel usernames.
 
-// Function to check if a user is a member of the channel
+// Function to check if a user is a member of all required channels
 async function isUserSubscribed(userId) {
-  try {
-    const member = await bot.telegram.getChatMember(CHANNEL_ID, userId);
-    return ['member', 'administrator', 'creator'].includes(member.status);
-  } catch (error) {
-    console.error('Error checking subscription:', error);
-    return false;
+  for (const channel of REQUIRED_CHANNELS) {
+    try {
+      const member = await bot.telegram.getChatMember(channel.id, userId);
+      if (!['member', 'administrator', 'creator'].includes(member.status)) {
+        return false; // User is not in this channel, or has restricted status
+      }
+    } catch (error) {
+      // This can happen if the bot is not an admin in the channel, or if the user is not in the channel.
+      // We'll treat it as "not subscribed".
+      return false;
+    }
   }
+  return true; // User is in all channels
+}
+
+async function sendSubscriptionMessage(ctx) {
+  const text = '请先加入以下所有频道和群组才能使用相应功能:\n' +
+    REQUIRED_CHANNELS.map(c => `• ${c.name}`).join('\n');
+
+  const buttons = REQUIRED_CHANNELS.map(c => {
+    const url = `https://t.me/${c.id.startsWith('@') ? c.id.substring(1) : c.id}`;
+    return [Markup.button.url(`👉 点我加入${c.name}完成验证 👈`, url)];
+  });
+
+  buttons.push([Markup.button.callback('✅ 我已加入，开始验证', 'check_subscription')]);
+
+  return ctx.reply(text, {
+    ...Markup.inlineKeyboard(buttons)
+  });
 }
 
 // ==== Query Queue ====
@@ -96,18 +121,29 @@ mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true 
 
 // ==== 启动预热 ====
 (async () => {
-  try {
-    await login();
-    await bot.telegram.getMe();
-    if (PUBLIC_URL) {
-      const WEBHOOK_PATH = `/webhook/${BOT_TOKEN}`;
-      await bot.telegram.setWebhook(`${PUBLIC_URL}${WEBHOOK_PATH}`);
-      console.log("✅ Webhook set");
-    } else {
-      console.warn("⚠️ PUBLIC_URL not set, configure webhook manually if using webhooks.");
+  const MAX_RETRIES = 5;
+  let retries = 0;
+  while (retries < MAX_RETRIES) {
+    try {
+      await login();
+      await bot.telegram.getMe();
+      if (PUBLIC_URL) {
+        const WEBHOOK_PATH = `/webhook/${BOT_TOKEN}`;
+        await bot.telegram.setWebhook(`${PUBLIC_URL}${WEBHOOK_PATH}`);
+        console.log("✅ Webhook set");
+      } else {
+        console.warn("⚠️ PUBLIC_URL not set, configure webhook manually if using webhooks.");
+      }
+      break; // Success, exit loop
+    } catch (err) {
+      retries++;
+      console.error(`❌ Startup init failed (attempt ${retries}/${MAX_RETRIES}):`, err);
+      if (retries >= MAX_RETRIES) {
+        console.error("❌ Max retries reached. Exiting.");
+        process.exit(1); // Optional: exit if startup fails after all retries
+      }
+      await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds before retrying
     }
-  } catch (err) {
-    console.error("❌ Startup init failed:", err);
   }
 })();
 
@@ -122,13 +158,7 @@ bot.start(async (ctx) => {
   if (!user) {
     const subscribed = await isUserSubscribed(userId);
     if (!subscribed) {
-      return ctx.reply(
-        'Please subscribe to channel to use the bot.',
-        Markup.inlineKeyboard([
-          [Markup.button.url('Subscribe', 'https://t.me/zznets')],
-          [Markup.button.callback('Check Subscription', 'check_subscription')]
-        ])
-      );
+      return sendSubscriptionMessage(ctx);
     }
 
     const inviteMatch = ctx.startPayload?.match(/invite_(\d+)/);
@@ -142,13 +172,7 @@ bot.start(async (ctx) => {
     if (!user.subscribed) {
       const subscribed = await isUserSubscribed(userId);
       if (!subscribed) {
-        return ctx.reply(
-          'Please subscribe to our channel to use the bot.',
-          Markup.inlineKeyboard([
-            [Markup.button.url('Subscribe', 'https://t.me/zznets')],
-            [Markup.button.callback('Check Subscription', 'check_subscription')]
-          ])
-        );
+        return sendSubscriptionMessage(ctx);
       }
       user.subscribed = true;
       await user.save();
@@ -877,8 +901,19 @@ bot.action('support', async (ctx) => {
 });
 
 // ====== 错误兜底 ======
-bot.catch((err, ctx) => {
+bot.catch(async (err, ctx) => {
   console.error(`❌ Error at update ${ctx.updateType}:`, err);
+
+  // Handle "bot was blocked by the user" error
+  if (err.response && err.response.error_code === 403) {
+    const userId = ctx.from.id;
+    try {
+      await User.findOneAndUpdate({ userId }, { isActive: false });
+      console.log(`User ${userId} has blocked the bot. Marked as inactive.`);
+    } catch (dbError) {
+      console.error(`Failed to update user status for ${userId}:`, dbError);
+    }
+  }
 });
 
 // ====== Express / Webhook ======
