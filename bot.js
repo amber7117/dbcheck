@@ -897,7 +897,7 @@ app.use(session({
 }));
 app.use(bot.webhookCallback(WEBHOOK_PATH));
 app.use(csrf(
-  "61de75c6-3cd5-46d0-896e-d3f4358b152e", // secret
+  "a3f78d1c95e2b40f6c8912a7b34d9e0f", // secret
   ["POST"], // methods
   ["/webhook/*"] // ignored paths
 ));
