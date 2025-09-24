@@ -895,13 +895,12 @@ app.use(session({
   saveUninitialized: false,
   store: MongoStore.create({ mongoUrl: MONGODB_URI })
 }));
+app.use(bot.webhookCallback(WEBHOOK_PATH));
 app.use(csrf(
-  "12345678901234567890123456789012", // secret
+  "61de75c6-3cd5-46d0-896e-d3f4358b152e", // secret
   ["POST"], // methods
   ["/webhook/*"] // ignored paths
 ));
-
-app.use(bot.webhookCallback(WEBHOOK_PATH));
 app.use('/', routes);
 
 const loginRouter = createTelegramLoginRouter({
