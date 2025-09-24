@@ -20,5 +20,25 @@
   "payment_prompt": "Please select a top-up amount.",
   "payment_successful": "Payment successful!",
   "invalid_number": "Invalid phone number. Please provide a valid number.",
-  "hlr_error": "An error occurred while performing the HLR lookup. Please try again later."
+  "hlr_error": "An error occurred while performing the HLR lookup. Please try again later.",
+  "stars": {
+    "pkg100": {
+      "title": "100 Points"
+    },
+    "pkg300": {
+      "title": "300 Points"
+    },
+    "pkg1000": {
+      "title": "1000 Points"
+    },
+    "sub_month": {
+      "title": "1-Month Unlimited"
+    },
+    "sub_quarter": {
+      "title": "3-Month Unlimited"
+    },
+    "sub_permanent": {
+      "title": "Permanent Unlimited"
+    }
+  }
 }

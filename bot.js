@@ -68,10 +68,25 @@ const STAR_PACKAGES = [
   { id: 'P100', points: 100, stars: 100, titleKey: 'stars.pkg100.title' },
   { id: 'P300', points: 300, stars: 300, titleKey: 'stars.pkg300.title' },
   { id: 'P1000', points: 1000, stars: 1000, titleKey: 'stars.pkg1000.title' },
+  { id: 'SUB_MONTH', stars: 2500, titleKey: 'stars.sub_month.title', subscription: 'monthly' },
+  { id: 'SUB_QUARTER', stars: 5000, titleKey: 'stars.sub_quarter.title', subscription: 'quarterly' },
+  { id: 'SUB_PERMANENT', stars: 10000, titleKey: 'stars.sub_permanent.title', subscription: 'permanent' },
 ];
 
 // ==== BOT ====
 const bot = new Telegraf(BOT_TOKEN);
+const CHANNEL_ID = '@zznets'; // Your channel username
+
+// Function to check if a user is a member of the channel
+async function isUserSubscribed(userId) {
+  try {
+    const member = await bot.telegram.getChatMember(CHANNEL_ID, userId);
+    return ['member', 'administrator', 'creator'].includes(member.status);
+  } catch (error) {
+    console.error('Error checking subscription:', error);
+    return false;
+  }
+}
 
 // ==== Query Queue ====
 let queryQueue = Promise.resolve();
@@ -105,11 +120,39 @@ bot.start(async (ctx) => {
   let user = await User.findOne({ userId });
 
   if (!user) {
+    const subscribed = await isUserSubscribed(userId);
+    if (!subscribed) {
+      return ctx.reply(
+        'Please subscribe to channel to use the bot.',
+        Markup.inlineKeyboard([
+          [Markup.button.url('Subscribe', 'https://t.me/zznets')],
+          [Markup.button.callback('Check Subscription', 'check_subscription')]
+        ])
+      );
+    }
+
     const inviteMatch = ctx.startPayload?.match(/invite_(\d+)/);
     const invitedBy = inviteMatch ? parseInt(inviteMatch[1]) : null;
-    user = new User({ userId, invitedBy, points: 5 });
+    user = new User({ userId, invitedBy, points: 5, subscribed: true });
     await user.save();
-    if (invitedBy) await User.findOneAndUpdate({ userId: invitedBy }, { $inc: { points: 1 } });
+    if (invitedBy) {
+      await User.findOneAndUpdate({ userId: invitedBy }, { $inc: { points: 3 } });
+    }
+  } else {
+    if (!user.subscribed) {
+      const subscribed = await isUserSubscribed(userId);
+      if (!subscribed) {
+        return ctx.reply(
+          'Please subscribe to our channel to use the bot.',
+          Markup.inlineKeyboard([
+            [Markup.button.url('Subscribe', 'https://t.me/zznets')],
+            [Markup.button.callback('Check Subscription', 'check_subscription')]
+          ])
+        );
+      }
+      user.subscribed = true;
+      await user.save();
+    }
   }
 
   const text =
@@ -127,40 +170,63 @@ bot.start(async (ctx) => {
   await ctx.reply(text, {
     parse_mode: 'HTML',
     ...Markup.inlineKeyboard([
-      [Markup.button.callback('💎 ' + tr(ctx, 'ui.premium', 'Premium Search'), 'premium')],
+      [Markup.button.callback('💎 ' + tr(ctx, 'ui.advance', 'Advance Search'), 'advance')],
       [Markup.button.callback('💳 ' + tr(ctx, 'ui.recharge', 'Top Up'), 'recharge'),
        Markup.button.callback('❓ ' + tr(ctx, 'ui.help', 'Help'), 'help')],
       [Markup.button.callback('👥 ' + tr(ctx, 'ui.invite', 'Invite'), 'invite'),
-       Markup.button.callback('☎️ ' + tr(ctx, 'ui.support', 'Support'), 'support')]
+       Markup.button.callback('☎️ ' + tr(ctx, 'ui.support', 'Support'), 'support')],
+      [Markup.button.callback('📅 Daily Check-in', 'daily_checkin')]
     ])
   });
 });
 
-// ====== Premium Search ======
-bot.action('premium', async (ctx) => {
+bot.action('check_subscription', async (ctx) => {
+  const userId = ctx.from.id;
+  const subscribed = await isUserSubscribed(userId);
+
+  if (subscribed) {
+    await ctx.answerCbQuery('Thank you for subscribing!');
+    let user = await User.findOne({ userId });
+    if (!user) {
+      user = new User({ userId, points: 5, subscribed: true });
+      await user.save();
+    } else {
+      user.subscribed = true;
+      await user.save();
+    }
+    // Resend the start message
+    ctx.update.callback_query.message.text = '/start';
+    return bot.handleUpdate(ctx.update);
+  } else {
+    await ctx.answerCbQuery('You are not subscribed yet.');
+  }
+});
+
+// ====== Advance Search ======
+bot.action('advance', async (ctx) => {
   const userId = ctx.from.id;
   const user = await User.findOne({ userId });
   if (!user) return ctx.reply(tr(ctx, 'errors.notRegistered', '❌ You are not registered yet. Use /start first.'));
 
   await ctx.answerCbQuery();
   const msg =
-    `💎 <b>${tr(ctx, 'premium.title', 'Premium Search Service')}</b>\n\n` +
+    `💎 <b>${tr(ctx, 'premium.title', 'Advance Search Service')}</b>\n\n` +
     tr(ctx, 'premium.available',
       'Available:\n- 🏠 Address Search\n- 📍 Phone Geo-location\n- 🚗 License Plate Search\n- … and more') +
-    `\n\n⚠️ ` + tr(ctx, 'premium.cost', 'Each premium search costs <b>50 points</b>.') + `\n` +
+    `\n\n⚠️ ` + tr(ctx, 'premium.cost', 'Each advance search costs <b>50 points</b>.') + `\n` +
     tr(ctx, 'start.balance', '💰 Current Balance:') + ` <b>${user.points} points</b>\n\n` +
     tr(ctx, 'premium.confirm', 'Do you want to proceed?');
 
   await ctx.reply(msg, {
     parse_mode: 'HTML',
     ...Markup.inlineKeyboard([
-      [Markup.button.callback('✅ ' + tr(ctx, 'ui.confirm50', 'Confirm (50 points)'), 'confirm_premium')],
-      [Markup.button.callback('❌ ' + tr(ctx, 'ui.cancel', 'Cancel'), 'cancel_premium')]
+      [Markup.button.callback('✅ ' + tr(ctx, 'ui.confirm50', 'Confirm (50 points)'), 'confirm_advance')],
+      [Markup.button.callback('❌ ' + tr(ctx, 'ui.cancel', 'Cancel'), 'cancel_advance')]
     ])
   });
 });
 
-bot.action('confirm_premium', async (ctx) => {
+bot.action('confirm_advance', async (ctx) => {
   const userId = ctx.from.id;
   const user = await User.findOne({ userId });
   if (!user) return ctx.reply(tr(ctx, 'errors.notRegistered', '❌ You are not registered yet. Use /start first.'));
@@ -171,14 +237,14 @@ bot.action('confirm_premium', async (ctx) => {
   }
 
   await User.updateOne({ userId }, { $inc: { points: -50 } });
-  await new QueryLog({ userId, query: '[Premium Search Requested]', results: 0, success: true }).save();
+  await new QueryLog({ userId, query: '[Advance Search Requested]', results: 0, success: true }).save();
 
   await ctx.answerCbQuery();
   await ctx.reply(tr(ctx, 'premium.afterPay',
     '✅ 50 points deducted. Please provide your premium search details to @dbcheck.'));
 });
 
-bot.action('cancel_premium', async (ctx) => {
+bot.action('cancel_advance', async (ctx) => {
   await ctx.answerCbQuery();
   const userId = ctx.from.id;
   let user = await User.findOne({ userId });
@@ -196,7 +262,7 @@ bot.action('cancel_premium', async (ctx) => {
   await ctx.reply(text, {
     parse_mode: 'HTML',
     ...Markup.inlineKeyboard([
-      [Markup.button.callback('💎 ' + tr(ctx, 'ui.premium', 'Premium Search'), 'premium')],
+      [Markup.button.callback('💎 ' + tr(ctx, 'ui.advance', 'Advance Search'), 'advance')],
       [Markup.button.callback('💳 ' + tr(ctx, 'ui.recharge', 'Top Up'), 'recharge'),
        Markup.button.callback('❓ ' + tr(ctx, 'ui.help', 'Help'), 'help')],
       [Markup.button.callback('👥 ' + tr(ctx, 'ui.invite', 'Invite'), 'invite'),
@@ -217,8 +283,12 @@ bot.command('query', (ctx) => {
   queryQueue = queryQueue.then(async () => {
     const userId = ctx.from.id;
     const user = await User.findOne({ userId });
-    if (!user || user.points <= 0) {
-      await new QueryLog({ userId, query: ctx.message.text, results: 0, success: false }).save();
+
+    const hasSubscription = user.subscriptionType &&
+      (user.subscriptionType === 'permanent' || new Date() < user.subscriptionExpiresAt);
+
+    if (!user || (!hasSubscription && user.points <= 0)) {
+      await new QueryLog({ userId, query: ctx.message.text, resultCount: 0, success: false }).save();
       return ctx.reply(tr(ctx, 'errors.noPoints', '❌ You don’t have enough points. Please recharge.'));
     }
 
@@ -232,42 +302,54 @@ bot.command('query', (ctx) => {
       const resultOutput = await search(queryText);
       try { await ctx.deleteMessage(waitMsg.message_id); } catch {}
 
-      // Handle cases where there are no results or an error occurred during search
       if (resultOutput === 'No results found.') {
-        await new QueryLog({ userId, query: queryText, results: 0, success: false }).save();
+        await new QueryLog({ userId, query: queryText, resultCount: 0, success: false }).save();
         return ctx.reply('⚠️ ' + tr(ctx, 'query.noResult', 'No matching results found. No points deducted.'));
       }
       if (resultOutput.startsWith('An error occurred')) {
-        await new QueryLog({ userId, query: queryText, results: 0, success: false }).save();
+        await new QueryLog({ userId, query: queryText, resultCount: 0, success: false }).save();
         return ctx.reply('❌ ' + tr(ctx, 'errors.searchError', 'Error occurred while searching. Please try again later.'));
       }
 
-      // If we have results, deduct points
-      const dec = await User.findOneAndUpdate(
-        { userId, points: { $gte: 1 } },
-        { $inc: { points: -1 } },
-        { new: true }
-      );
-      if (!dec) {
-        await new QueryLog({ userId, query: queryText, results: 0, success: false }).save();
-        return ctx.reply(tr(ctx, 'errors.noPoints', '❌ You don’t have enough points. Please recharge.'));
-      }
-      // Log success, result count is unknown here but the query was successful
-      await new QueryLog({ userId, query: queryText, results: 1, success: true }).save();
+      const hasSubscription = user.subscriptionType &&
+        (user.subscriptionType === 'permanent' || new Date() < user.subscriptionExpiresAt);
 
-      // Handle the output: either send a text file or a message
-      if (resultOutput.includes('.txt')) {
-        const filePath = resultOutput.split(': ')[1];
-        await ctx.reply(resultOutput); // Send the message "The result is too long..."
-        await ctx.replyWithDocument({ source: filePath }); // Send the file itself
-      } else {
-        // The result is short enough to be sent as a message
-        await ctx.reply(`<pre>${htmlEsc(resultOutput)}</pre>`, { parse_mode: 'HTML' });
+      if (!hasSubscription) {
+        const dec = await User.findOneAndUpdate(
+          { userId, points: { $gte: 1 } },
+          { $inc: { points: -1 } },
+          { new: true }
+        );
+        if (!dec) {
+          await new QueryLog({ userId, query: queryText, resultCount: 0, success: false }).save();
+          return ctx.reply(tr(ctx, 'errors.noPoints', '❌ You don’t have enough points. Please recharge.'));
+        }
       }
+
+      const lines = resultOutput.split('\n');
+      const log = await new QueryLog({ userId, query: queryText, resultCount: lines.length, resultText: resultOutput, success: true }).save();
+
+      const itemsPerPage = 10;
+      const totalPages = Math.ceil(lines.length / itemsPerPage);
+      const page = 1;
+      const pageContent = lines.slice(0, itemsPerPage).join('\n');
+
+      const markup = Markup.inlineKeyboard([
+        [
+          Markup.button.callback(`Page ${page}/${totalPages}`, 'noop'),
+          Markup.button.callback('Next >', `page_${log._id}_${page + 1}`)
+        ],
+        [Markup.button.callback('Download All', `download_${log._id}`)]
+      ]);
+
+      await ctx.reply(`<pre>${htmlEsc(pageContent)}</pre>`, {
+        parse_mode: 'HTML',
+        ...markup
+      });
 
     } catch (e) {
       console.error(e);
-      await new QueryLog({ userId, query: queryText, results: 0, success: false }).save();
+      await new QueryLog({ userId, query: queryText, resultCount: 0, success: false }).save();
       await ctx.reply('❌ ' + tr(ctx, 'errors.searchError', 'Error occurred while searching. Please try again later.'));
     }
   }).catch(err => {
@@ -275,6 +357,59 @@ bot.command('query', (ctx) => {
     ctx.reply('❌ An unexpected error occurred in the processing queue.');
   });
 });
+
+bot.action(/page_(.+)_(\d+)/, async (ctx) => {
+  const logId = ctx.match[1];
+  const page = parseInt(ctx.match[2]);
+
+  const log = await QueryLog.findById(logId);
+  if (!log) {
+    return ctx.answerCbQuery('Query not found.');
+  }
+
+  const lines = log.resultText.split('\n');
+  const itemsPerPage = 10;
+  const totalPages = Math.ceil(lines.length / itemsPerPage);
+
+  if (page < 1 || page > totalPages) {
+    return ctx.answerCbQuery('Invalid page number.');
+  }
+
+  const start = (page - 1) * itemsPerPage;
+  const end = start + itemsPerPage;
+  const pageContent = lines.slice(start, end).join('\n');
+
+  const buttons = [];
+  if (page > 1) {
+    buttons.push(Markup.button.callback('< Prev', `page_${logId}_${page - 1}`));
+  }
+  buttons.push(Markup.button.callback(`Page ${page}/${totalPages}`, 'noop'));
+  if (page < totalPages) {
+    buttons.push(Markup.button.callback('Next >', `page_${logId}_${page + 1}`));
+  }
+
+  await ctx.editMessageText(`<pre>${htmlEsc(pageContent)}</pre>`, {
+    parse_mode: 'HTML',
+    ...Markup.inlineKeyboard([buttons, [Markup.button.callback('Download All', `download_${logId}`)]])
+  });
+});
+
+bot.action(/download_(.+)/, async (ctx) => {
+  const logId = ctx.match[1];
+  const log = await QueryLog.findById(logId);
+
+  if (!log) {
+    return ctx.answerCbQuery('Query not found.');
+  }
+
+  const filePath = path.join(__dirname, `${logId}.txt`);
+  require('fs').writeFileSync(filePath, log.resultText);
+
+  await ctx.replyWithDocument({ source: filePath });
+  require('fs').unlinkSync(filePath); // Clean up the file
+});
+
+bot.action('noop', (ctx) => ctx.answerCbQuery());
 
 // ====== /lookup （HLR 查询，成功才扣 1 点）======
 bot.command('lookup', async (ctx) => {
@@ -643,19 +778,44 @@ bot.on('successful_payment', async (ctx) => {
     try { payload = JSON.parse(sp.invoice_payload || '{}'); } catch {}
     if (payload.kind !== 'stars_points') return;
 
-    const points = Number(payload.points) || 0;
     const userId = ctx.from.id;
+    const pkg = STAR_PACKAGES.find(p => p.id === payload.pkgId);
 
-    if (points > 0) {
-      await User.updateOne({ userId }, { $inc: { points } });
+    if (pkg.subscription) {
+      let expiresAt = null;
+      if (pkg.subscription === 'monthly') {
+        expiresAt = new Date();
+        expiresAt.setMonth(expiresAt.getMonth() + 1);
+      } else if (pkg.subscription === 'quarterly') {
+        expiresAt = new Date();
+        expiresAt.setMonth(expiresAt.getMonth() + 3);
+      }
+
+      await User.updateOne({ userId }, {
+        subscriptionType: pkg.subscription,
+        subscriptionExpiresAt: expiresAt
+      });
+
       await new QueryLog({
         userId,
-        query: `[Stars] ${points}p / ${sp.total_amount} XTR`,
-        results: 0,
+        query: `[Subscription] ${pkg.subscription} / ${sp.total_amount} XTR`,
         success: true
       }).save();
 
-      await ctx.reply(`✅ ${tr(ctx,'recharge.stars.success','Payment received. Points added:')} <b>+${points}</b>`, { parse_mode: 'HTML' });
+      await ctx.reply(`✅ Payment received. You now have a ${pkg.subscription} subscription.`);
+    } else {
+      const points = Number(payload.points) || 0;
+      if (points > 0) {
+        await User.updateOne({ userId }, { $inc: { points } });
+        await new QueryLog({
+          userId,
+          query: `[Stars] ${points}p / ${sp.total_amount} XTR`,
+          resultCount: 0,
+          success: true
+        }).save();
+
+        await ctx.reply(`✅ ${tr(ctx,'recharge.stars.success','Payment received. Points added:')} <b>+${points}</b>`, { parse_mode: 'HTML' });
+      }
     }
   } catch (e) {
     console.error('successful_payment handler error:', e);
@@ -675,7 +835,7 @@ bot.action('help', async (ctx) => {
 3️⃣ ${tr(ctx,'help.cost','Each successful query deducts 1 point')}
 4️⃣ ${tr(ctx,'help.noDeduct','No deduction if no results')}
 5️⃣ ${tr(ctx,'help.invite','Invite friends to earn free points')}
-6️⃣ ${tr(ctx,'help.premium','Premium searches cost 50 points')}`;
+6️⃣ ${tr(ctx,'help.premium','Advance searches cost 50 points')}`;
 
   await ctx.reply(msg);
 });
@@ -684,9 +844,31 @@ bot.action('invite', async (ctx) => {
   await ctx.answerCbQuery();
   const me = await bot.telegram.getMe();
   const inviteLink = `https://t.me/${me.username}?start=invite_${ctx.from.id}`;
-  await ctx.reply(`👥 ${tr(ctx,'invite.text','Invite friends and earn 1 point per signup.')}
+  await ctx.reply(`👥 ${tr(ctx,'invite.text','Invite friends and earn 3 points per signup.')}
 ${tr(ctx,'invite.link','Your referral link:')}
 ${inviteLink}`);
+});
+
+bot.action('daily_checkin', async (ctx) => {
+  const userId = ctx.from.id;
+  const user = await User.findOne({ userId });
+
+  if (!user) {
+    return ctx.answerCbQuery(tr(ctx, 'errors.notRegistered', '❌ You are not registered yet. Use /start first.'));
+  }
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  if (user.lastCheckin && user.lastCheckin >= today) {
+    return ctx.answerCbQuery('You have already checked in today.');
+  }
+
+  user.points += 1;
+  user.lastCheckin = now;
+  await user.save();
+
+  await ctx.answerCbQuery(`You've received 1 point for checking in! Your new balance is ${user.points} points.`);
 });
 
 bot.action('support', async (ctx) => {

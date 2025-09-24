@@ -20,5 +20,25 @@
   "payment_prompt": "Sila pilih jumlah tambah nilai.",
   "payment_successful": "Pembayaran berjaya!",
   "invalid_number": "Nombor telefon tidak sah. Sila berikan nombor yang sah.",
-  "hlr_error": "Ralat berlaku semasa melakukan carian HLR. Sila cuba lagi nanti."
+  "hlr_error": "Ralat berlaku semasa melakukan carian HLR. Sila cuba lagi nanti.",
+  "stars": {
+    "pkg100": {
+      "title": "100 Mata"
+    },
+    "pkg300": {
+      "title": "300 Mata"
+    },
+    "pkg1000": {
+      "title": "1000 Mata"
+    },
+    "sub_month": {
+      "title": "1-Bulan Tanpa Had"
+    },
+    "sub_quarter": {
+      "title": "3-Bulan Tanpa Had"
+    },
+    "sub_permanent": {
+      "title": "Kekal Tanpa Had"
+    }
+  }
 }

@@ -20,5 +20,25 @@
   "payment_prompt": "请选择充值金额。",
   "payment_successful": "支付成功！",
   "invalid_number": "无效的电话号码。请输入有效的号码。",
-  "hlr_error": "执行 HLR 查询时出错。请稍后再试。"
+  "hlr_error": "执行 HLR 查询时出错。请稍后再试。",
+  "stars": {
+    "pkg100": {
+      "title": "100 积分"
+    },
+    "pkg300": {
+      "title": "300 积分"
+    },
+    "pkg1000": {
+      "title": "1000 积分"
+    },
+    "sub_month": {
+      "title": "1个月无限查询"
+    },
+    "sub_quarter": {
+      "title": "3个月无限查询"
+    },
+    "sub_permanent": {
+      "title": "永久无限查询"
+    }
+  }
 }
