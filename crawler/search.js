@@ -1,6 +1,5 @@
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
-const chromium = require('@sparticuz/chromium');
 const fs = require('fs').promises;
 const path = require('path');
 const Cookie = require('../models/cookie');
@@ -11,13 +10,21 @@ puppeteer.use(StealthPlugin());
 // Configuration constants
 const CONFIG = {
   BROWSER: {
-    ARGS: chromium.args,
-    DEFAULT_VIEWPORT: chromium.defaultViewport,
-    HEADLESS: chromium.headless,
+    ARGS: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-accelerated-2d-canvas',
+      '--no-first-run',
+      '--no-zygote',
+      '--disable-gpu'
+    ],
+    DEFAULT_VIEWPORT: { width: 1280, height: 720 },
+    HEADLESS: true,
   },
   TIMEOUTS: {
     RETRY_DELAY: 1000,
-    PAGE_WAIT: 80000,
+    PAGE_WAIT: 45000, // Reduced from 80s to 45s
     NETWORK_IDLE: 'networkidle2',
   },
   URLS: {
@@ -53,7 +60,6 @@ async function getBrowser() {
     browserInstance = await puppeteer.launch({
       args: CONFIG.BROWSER.ARGS,
       defaultViewport: CONFIG.BROWSER.DEFAULT_VIEWPORT,
-      executablePath: await chromium.executablePath(),
       headless: CONFIG.BROWSER.HEADLESS,
     });
   }
@@ -153,6 +159,7 @@ function getSearchCategory(queryText) {
 async function doSearch(page, queryText) {
   const category = getSearchCategory(queryText);
 
+  // Fill and submit search form
   await page.evaluate((term, cat, selectors) => {
     const input = document.querySelector(selectors.KEYWORD_INPUT);
     const select = document.querySelector(selectors.CATEGORY_SELECT);
@@ -163,10 +170,49 @@ async function doSearch(page, queryText) {
     }
   }, queryText, category, CONFIG.SELECTORS);
 
-  await page.waitForSelector(CONFIG.SELECTORS.RESULT_SELECTOR, { 
-    timeout: CONFIG.TIMEOUTS.PAGE_WAIT 
-  });
+  // Wait for results with better error handling and fallbacks
+  try {
+    await page.waitForSelector(CONFIG.SELECTORS.RESULT_SELECTOR, { 
+      timeout: CONFIG.TIMEOUTS.PAGE_WAIT 
+    });
+  } catch (timeoutError) {
+    // Check if we're on login page (authentication issue)
+    const currentUrl = page.url();
+    if (currentUrl.includes('login.php')) {
+      throw new Error('Authentication failed - redirected to login page');
+    }
 
+    // Check for other error indicators
+    const errorText = await page.evaluate(() => {
+      const errorElement = document.querySelector('.error, .alert, .warning');
+      return errorElement ? errorElement.innerText : null;
+    });
+
+    if (errorText) {
+      throw new Error(`Search failed with error: ${errorText}`);
+    }
+
+    // Check if page loaded but selectors don't exist
+    const pageContent = await page.content();
+    if (pageContent.includes('login') || pageContent.includes('Login')) {
+      throw new Error('Authentication required - please check cookies');
+    }
+
+    // Check for generic timeout
+    throw new Error(`Search timeout after ${CONFIG.TIMEOUTS.PAGE_WAIT/1000}s - website may be down or structure changed`);
+  }
+
+  // Check if we have "no results" message
+  const hasNoResults = await page.evaluate((selectors) => {
+    const noResultsElement = document.querySelector(selectors.NO_RESULTS);
+    return noResultsElement !== null;
+  }, CONFIG.SELECTORS);
+
+  if (hasNoResults) {
+    return [];
+  }
+
+  // Extract results from data table
   return await page.evaluate((selectors) => {
     const rows = Array.from(document.querySelectorAll(selectors.DATA_ROWS));
     const items = [];
